@@ -30,10 +30,17 @@
 #include <signal.h>
 #include <ctype.h>
 #include <math.h>
+#include <stdint.h>
+#include <string.h>
 
 #if defined(__powerpc__) || defined(__ppc__)
 #define NATIVE_POWERPC
 #endif
+
+using uint8 = uint8_t;
+using uint16 = uint16_t;
+using uint32 = uint32_t;
+using uintptr = uintptr_t;
 
 #if EMU_KHEPERIX
 #include "sysdeps.h"
