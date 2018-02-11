@@ -7,6 +7,8 @@
 #include <iostream>
 #include <sstream>
 
+std::string definitionFile;
+
 class InputParser
 {
     std::istream& stream;
@@ -241,7 +243,7 @@ void InstructionInfo::generateElseIf(std::ostream& out)
     for(auto f : fields)
         f.generateDecl(out);
     out << "\n";
-    out << "#line " << std::dec << lineno << " \"powerpc.ppcdef\"\n";
+    out << "#line " << std::dec << lineno << " \"" << definitionFile << "\"\n";
     out << code;
     out << "}\n";
 }
@@ -263,7 +265,8 @@ int main(int argc, char *argv[])
 {
     if(argc != 2)
         return 1;
-    std::ifstream stream(argv[1]);
+    definitionFile = argv[1];
+    std::ifstream stream(definitionFile);
     std::vector<InstructionInfo> insns;
     InputParser in(stream);
     while(in.haveMore())
