@@ -33,7 +33,13 @@ adde
     if(OE) overflow(val);
     if(Rc) record(0,val);
     CA = (val >> 32) & 1;
-  
+
+===
+
+adde64
+011111 RT RA RB OE 110001010 Rc
+0      6  11 16 21 22        31
+
 ===
 
 addi
@@ -67,6 +73,13 @@ addme
     if(Rc) record(0,val);
     CA = (val >> 32) & 1;
   
+===
+
+addme64
+
+011111 RT RA 00000 OE 111101010 Rc
+0      6  11 16    21 22        31
+
 ===
 
 addze
@@ -114,9 +127,8 @@ andi
 
 ===
 
-// b, ba, bl, bla
-
 b
+
 010010 LI AA LK
 0      6  30 31
 
@@ -127,7 +139,12 @@ b
     NIA = (AA ? 0 : CIA) + val;
 
 ===
-// be, bea, bel, bela
+
+be
+010110 LI AA LK
+0      6  30 31
+
+===
 
 bc
 010000 BO BI BD AA LK
@@ -138,7 +155,12 @@ bc
         NIA = (AA ? 0 : CIA) + (int16_t) (BD<<2);
 
 ===
-// bce, ...
+
+bce
+001001 BO BI BD AA LK
+0      6  11 16 30 31
+
+===
 
 bcctr
 010011 BO BI 00000 1000010000 LK
@@ -149,6 +171,12 @@ bcctr
         NIA = ctr & ~3;
 
 ===
+
+bcctre
+010011 BO BI 00000 1000010001 LK
+0      6  11 16    21         31
+
+===
 bclr
 
 010011 BO BI 00000 0000010000 LK
@@ -157,6 +185,12 @@ bclr
     if(LK) lr = NIA;
     if(conditional(BO, BI))
         NIA = lr & ~3;
+
+===
+bclre
+
+010011 BO BI 00000 0000010001 LK
+0      6  11 16    21         31
 
 ===
 
@@ -210,6 +244,12 @@ cntlzw
     uint32_t val = __builtin_clz(r[RS]);
     r[RA] = val;
     if(Rc) record(0,val);
+
+===
+cntlzd
+
+011111 RS RA 00000 0000111010 Rc
+0      6  11 16    21         31
 
 ===
 crand
@@ -292,6 +332,12 @@ dcbf
     ;
 
 ===
+dcbi
+
+011111 00000 RA RB 011101 E  110 0
+0      6     11 16 21     27 28  31
+
+===
 dcbst
 
 011111 00000 RA RB 000011 E  110 0
@@ -314,6 +360,24 @@ dcbtst
 0      6  11 16 21     27 28  31
 
     ;
+
+===
+dcbz
+
+011111 00000 RA RB 111111 E  110 0
+0      6     11 16 21     27 28  31
+
+===
+divd
+
+011111 RT RA RB OE 111101001 Rc
+0      6  11 16 21 22        31
+
+===
+divdu
+
+011111 RT RA RB OE 111001001 Rc
+0      6  11 16 21 22        31
 
 ===
 divw
@@ -372,7 +436,135 @@ extsh
     int32_t val = (int16_t)r[RS];
     r[RA] = val;
     if(Rc) record(0, val);
+
 ===
+extsw
+
+011111 RS RA 00000 1111011010 Rc
+0      6  11 16    21         31
+
+===
+fabs
+
+111111 FRT 00000 FRB 0100001000 Rc
+0      6   11    16  21         31
+===
+fadd
+
+111 P 11 FRT FRA FRB 00000 10101 Rc
+0   3 4  6   11  16  21    26    31
+===
+fcfid
+
+111111 FRT 00000 FRB 1101001110 0
+0      6   11    16  21         31
+===
+fcmp
+
+111111 BF 00 FRA FRB 0000 U  00000 0
+0      6  9  11  16  21   25 26    31
+===
+fctid
+
+111111 FRT 00000 FRB 110010111 Z  0
+0      6   11    16  21        30 31
+===
+fctiw
+
+111111 FRT 00000 FRB 000000111 Z  Rc
+0      6   11    16  21        30 31
+===
+fdiv
+
+111 P 11 FRT FRA FRB 00000 10010 Rc
+0   3 4  6   11  16  21    26    31
+
+===
+
+fmadd
+111 P 11 FRT FRA FRB FRC 11101 Rc
+0   3 4  6   11  16  21  26    31
+
+===
+
+fmr
+111111 FRT 00000 FRB 0001001000 Rc
+0      6   11    16  21         31
+
+===
+
+fmsub
+111 P 11 FRT FRA FRB FRC 11100 Rc
+0   3 4  6   11  16  21  26    31
+
+===
+
+fmul
+111 P 11 FRT FRA 00000 FRC 11001 Rc
+0   3 4  6   11  16    21  26    31
+
+===
+
+fnabs
+111111 FRT 00000 FRB 0010001000 Rc
+0      6   11    16  21         31
+
+===
+
+fneg
+111111 FRT 00000 FRB 0000101000 Rc
+0      6   11    16  21         31
+
+===
+
+fnmadd
+111 P 11 FRT FRA FRB FRC 11111 Rc
+0   3 4  6   11  16  21  26    31
+
+===
+
+fnmsub
+111 P 11 FRT FRA FRB FRC 11110 Rc
+0   3 4  6   11  16  21  26    31
+
+===
+
+fres
+111011 FRT 00000 FRB 00000 11000 Rc
+0      6   11    16  21    26    31
+
+===
+
+frsp
+111111 FRT 00000 FRB 0000001100 Rc
+0      6   11    16  21         31
+
+===
+
+frsqrte
+111111 FRT 00000 FRB 00000 11010 Rc
+0      6   11    16  21    26    31
+
+===
+
+fsel
+111111 FRT FRA FRB FRC 10111 Rc
+0      6   11  16  21  26    31
+
+===
+
+fsqrt
+111 P 11 FRT 00000 FRB 00000 10110 Rc
+0   3 4  6   11    16  21    26    31
+
+===
+
+fsub
+111 P 11 FRT FRA FRB 00000 10100 Rc
+0   3 4  6   11  16  21    26    31
+
+===
+
 icbi
 
 011111 00000 RA RB 1111010110 0
@@ -408,6 +600,12 @@ lbz
     if(U) r[RA] = ea;
 
 ===
+lbze
+
+111010 RT RA DE 000 U
+0      6  11 16 28  31
+
+===
 lbzx
 
 011111 RT RA RB 0001 U  10111 0
@@ -416,6 +614,78 @@ lbzx
     uint32_t ea = (RA ? r[RA] : 0) + r[RB];
     r[RT] = load<uint8_t>(ea);
     if(U) r[RA] = ea;
+
+===
+lbzxe
+
+011111 RT RA RB 0001 U  11111 0
+0      6  11 16 21   25 26    31
+
+===
+
+ldarxe
+011111 RT RA RB 0111011111 0
+0      6  11 16 21         31
+
+===
+
+lde
+111110 RT RA DES 000 U
+0      6  11 16  28  31
+
+===
+
+ldxe
+011111 RT RA RB 1100 U  11111 0
+0      6  11 16 21   25 26    31
+
+===
+
+lfd
+11001 U FRT RA D
+0     5 6   11 16
+
+===
+
+lfde
+111110 FRT RA DES 011 U
+0      6   11 16  28  31
+
+===
+
+lfdx
+011111 FRT RA RB 1001 U  10111 0
+0      6   11 16 21   25 26    31
+
+===
+
+lfdxe
+011111 FRT RA RB 1001 U  11111 0
+0      6   11 16 21   25 26    31
+
+===
+
+lfs
+11000 U FRT RA D
+0     5 6   11 16
+
+===
+
+lfse
+111110 FRT RA DES 010 U
+0      6   11 16  28  31
+
+===
+
+lfsx
+011111 FRT RA RB 1000 U  10111 0
+0      6   11 16 21   25 26    31
+
+===
+
+lfsxe
+011111 FRT RA RB 1000 U  11111 0
+0      6   11 16 21   25 26    31
 
 ===
 lha
@@ -428,6 +698,11 @@ lha
     if(U) r[RA] = ea;
 
 ===
+lhae
+111010 RT RA DE 010 U
+0      6  11 16 28  31
+
+===
 lhax
 
 011111 RT RA RB 0101 U  10111 0
@@ -436,6 +711,12 @@ lhax
     uint32_t ea = (RA ? r[RA] : 0) + r[RB];
     r[RT] = (int32_t) load<int16_t>(ea);
     if(U) r[RA] = ea;
+
+===
+lhaxe
+
+011111 RT RA RB 0101 U  11111 0
+0      6  11 16 21   25 26    31
 
 ===
 lhbrx
@@ -447,13 +728,11 @@ lhbrx
     r[RT] = swap16( load<uint16_t>(ea) );
 
 ===
-lwbrx
+lhbrxe
 
-011111 RT RA RB 1000010110 0
+011111 RT RA RB 1100011110 0
 0      6  11 16 21         31
 
-    uint32_t ea = (RA ? r[RA] : 0) + r[RB];
-    r[RT] = swap32( load<uint32_t>(ea) );
 
 ===
 lhz
@@ -464,6 +743,10 @@ lhz
     uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
     r[RT] = load<uint16_t>(ea);
     if(U) r[RA] = ea;
+===
+lhze
+111010 RT RA DE 001 U
+0      6  11 16 28  31
 
 ===
 lhzx
@@ -476,6 +759,51 @@ lhzx
     if(U) r[RA] = ea;
 
 ===
+lhzxe
+
+011111 RT RA RB 0100 U  11111 0
+0      6  11 16 21   25 26    31
+
+===
+lmw
+101110 RT RA D
+0      6  11 16
+
+===
+lswi
+011111 RT RA NB 1001010101 0
+0      6  11 16 21         31
+
+===
+lswx
+011111 RT RA RB 1000010101 0
+0      6  11 16 21         31
+
+===
+lwarx
+011111 RT RA RB 0000010100 0
+0      6  11 16 21         31
+===
+lwarxe
+011111 RT RA RB 0001111110 0
+0      6  11 16 21         31
+
+
+===
+lwbrx
+
+011111 RT RA RB 1000010110 0
+0      6  11 16 21         31
+
+    uint32_t ea = (RA ? r[RA] : 0) + r[RB];
+    r[RT] = swap32( load<uint32_t>(ea) );
+===
+lwbrxe
+
+011111 RT RA RB 1000011110 0
+0      6  11 16 21         31
+
+===
 lwz
 
 10000 U RT RA D
@@ -484,6 +812,12 @@ lwz
     uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
     r[RT] = load<uint32_t>(ea);
     if(U) r[RA] = ea;
+
+===
+lwze
+
+111010 RT RA DE 011 U
+0      6  11 16 28  31
 
 ===
 lwzx
@@ -496,12 +830,54 @@ lwzx
     if(U) r[RA] = ea;
 
 ===
+lwzxe
+
+011111 RT RA RB 0000 U  11111 0
+0      6  11 16 21   25 26    31
+
+===
+mbar
+
+011111 MO 0000000000 1101010110 0
+0      6  11         21         31
+
+    ;
+
+===
 mcrf
 
 010011 BF 00 BFA 0000000 0000000000 0
 0      6  9  11  14      21         31
 
     setcr(BFA, getcr(BF));
+
+===
+
+mcrfs
+
+111111 BF 00 BFA 0000000 0001000000 0
+0      6  9  11  14      21         31
+
+===
+
+mcrxr
+
+011111 BF 000000000000 1000000000 0
+0      6  9            21         31
+
+===
+
+mcrxr64
+
+011111 BF 000000000000 1000100000 0
+0      6  9            21         31
+
+===
+
+mfapidi
+011111 RT RA 00000 0100010011 0
+0      6  11 16    21         31
+
 
 ===
 mfcr
@@ -512,12 +888,20 @@ mfcr
     r[RT] = cr;
 
 ===
-mcrxr
+mfdcr
 
-011111 BF 000000000000 1000000000 0
-0      6  9            21         31
+011111 RT dcrn 0101000011 0
+0      6  11   21         31
 
-    ; // TODO
+===
+mffs
+111111 FRT 0000000000 1001000111 Rc
+0      6   11         21         31
+
+===
+mfmsr
+011111 RT 0000000000 0001010011 0
+0      6  11         21         31
 
 ===
 mflr
@@ -534,6 +918,12 @@ mfctr
 0      6  11    16    21         31
 
     r[RT] = ctr;
+
+===
+mfspr
+
+011111 RT sprn 0101010011 0
+0      6  11   21         31
 
 ===
 msync
@@ -554,6 +944,37 @@ mtcrf
             setcr(i, (r[RS] >> (7-i) * 4) & 0xF);
 
 ===
+mtdcr
+
+011111 RS dcrn 0111000011 0
+0      6  11   21         31
+
+===
+mtfsb0
+111111 BR 0000000000 0001000110 Rc
+0      6  11         21         31
+
+===
+mtfsb1
+111111 BR 0000000000 0000100110 Rc
+0      6  11         21         31
+
+===
+mrfsf
+111111 0 FLM 0  FRB 1011000111 Rc
+0      6 7   15 16  21         31
+
+===
+mtfsfi
+111111 BF 0000000 U  0  0010000110 Rc
+0      6  9       16 20 21         31
+
+===
+mtmsr
+011111 RS 0000000000 0010010010 0
+0      6  11         21         31
+
+===
 mtlr
 
 011111 RS 01000 00000 0111010011 0
@@ -568,6 +989,23 @@ mtctr
 0      6  11    16    21         31
 
     ctr = r[RS];
+
+===
+mtspr
+
+011111 RS sprn 0111010011 0
+0      6  11   21         31
+
+===
+mulhd
+
+011111 RT RA RB 0  001001001 Rc
+0      6  11 16 21 22        31
+===
+mulhdu
+
+011111 RT RA RB 0  000001001 Rc
+0      6  11 16 21 22        31
 
 ===
 mulhw
@@ -588,6 +1026,11 @@ mulhwu
     uint64_t prod = (uint64_t)r[RA] * (uint64_t)r[RB];
     if(Rc) record(0, (int64_t)prod >> 32);
     r[RT] = prod >> 32;
+
+===
+mulld
+011111 RT RA RB OE 011101001 0
+0      6  11 16 21 22        31
 
 ===
 mulli
@@ -685,6 +1128,56 @@ ori
 
 ===
 
+rfci
+010011 000000000000000 0000110011 0
+0      6               21         31
+
+===
+
+rfi
+010011 000000000000000 0000110010 0
+0      6               21         31
+
+===
+
+rldcl
+011110 RS RA RB mb mb0 1000 0
+0      6  11 16 21 26  27   31
+
+===
+
+rldicl
+011110 RS RA sh mb mb0 000 sh0 0
+0      6  11 16 21 26  27  30  31
+
+===
+
+rldcr
+011110 RS RA RB mb mb0 1001 0
+0      6  11 16 21 26  27   31
+
+===
+
+rldicr
+011110 RS RA sh mb mb0 001 sh0 0
+0      6  11 16 21 26  27  30  31
+
+===
+
+rldic
+011110 RS RA sh mb mb0 010 sh0 0
+0      6  11 16 21 26  27  30  31
+
+
+===
+
+rldimi
+
+011110 RS RA sh mb mb0 011 sh0 0
+0      6  11 16 21 26  27  30  31
+
+===
+
 rlwimi
 
 010100 RS RA SH MB ME Rc
@@ -722,6 +1215,19 @@ rlwnm
 
 ===
 
+sc
+010001 000000000000000000000000 1  0
+0      6                        30 31
+
+===
+
+sld
+
+011111 RS RA RB 0000011011 0
+0      6  11 16 21         31
+
+===
+
 slw
 
 011111 RS RA RB 0000011000 Rc
@@ -735,6 +1241,18 @@ slw
         result = r[RS] << n;
     if(Rc) record(0,result);
     r[RA] = result;
+
+===
+
+srad
+011111 RS RA RB 1100011010 0
+0      6  11 16 21         31
+
+===
+
+sradi
+011111 RS RA sh 110011101 sh0 0
+0      6  11 16 21        30  31
 
 ===
 
@@ -770,6 +1288,13 @@ sraw
 
 ===
 
+srd
+
+011111 RS RA RB 1000011011 0
+0      6  11 16 21         31
+
+===
+
 srw
 
 011111 RS RA RB 1000011000 Rc
@@ -799,6 +1324,12 @@ stb
     if(U) r[RA] = ea;
 
 ===
+
+stbe
+111010 RS RA DE 100 U
+0      6  11 16 28  31
+
+===
 stbx
 
 011111 RS RA RB 0011 U  10111 0
@@ -807,6 +1338,77 @@ stbx
     uint32_t ea = (RA ? r[RA] : 0) + r[RB];
     store<uint8_t>(ea, r[RS]);
     if(U) r[RA] = ea;
+
+===
+stbxe
+
+011111 RS RA RB 0011 U  11111 0
+0      6  11 16 21   25 26    31
+
+===
+stdcxe
+011111 RS RA RB 0111111111 1
+0      6  11 16 21         31
+
+===
+stde
+111110 RS RA DES 100 U
+0      6  11 16  28  31
+
+===
+stdxe
+011111 RS RA RB 1110 U  11111 0
+0      6  11 16 21   25 26    31
+
+===
+stfd
+11011 U FRS RA D
+0     5 6   11 16
+
+===
+stfde
+111110 FRS RA DES 111 U
+0      6   11 16  28  31
+
+===
+stfdx
+011111 FRS RA RB 1011 U  10111 0
+0      6   11 16 21   25 26    31
+===
+stfdxe
+011111 FRS RA RB 1011 U  11111 0
+0      6   11 16 21   25 26    31
+
+===
+
+stfiwx
+011111 FRS RA RB 1111010111 0
+0      6   11 16 21         31
+
+===
+
+stfiwxe
+011111 FRS RA RB 1111011111 0
+0      6   11 16 21         31
+
+===
+stfs
+11010 U FRS RA D
+0     5 6   11 16
+
+===
+stfse
+111110 FRS RA DES 110 U
+0      6   11 16  28  31
+
+===
+stfsx
+011111 FRS RA RB 1010 U  10111 0
+0      6   11 16 21   25 26    31
+===
+stfsxe
+011111 FRS RA RB 1010 U  11111 0
+0      6   11 16 21   25 26    31
 
 ===
 sth
@@ -819,6 +1421,12 @@ sth
     if(U) r[RA] = ea;
 
 ===
+sthe
+
+111010 RS RA DE 101 U
+0      6  11 16 28  31
+
+===
 sthx
 
 011111 RS RA RB 0110 U  10111 0
@@ -829,6 +1437,12 @@ sthx
     if(U) r[RA] = ea;
 
 ===
+sthxe
+
+011111 RS RA RB 0110 U  11111 0
+0      6  11 16 21   25 26    31
+
+===
 sthbrx
 
 011111 RS RA RB 1110010110 0
@@ -836,6 +1450,27 @@ sthbrx
 
     uint32_t ea = (RA ? r[RA] : 0) + r[RB];
     store<uint16_t>(ea, swap16(r[RS]));
+
+===
+sthbrxe
+
+011111 RS RA RB 1110011110 0
+0      6  11 16 21         31
+
+===
+stmw
+101111 RS RA D
+0      6  11 16
+
+===
+stswi
+011111 RS RA NB 1011010101 0
+0      6  11 16 21         31
+
+===
+stswx
+011111 RS RA RB 1010010101 0
+0      6  11 16 21         31
 
 ===
 stw
@@ -848,6 +1483,12 @@ stw
     if(U) r[RA] = ea;
 
 ===
+stwe
+
+111010 RS RA DE 111 U
+0      6  11 16 28  31
+
+===
 stwx
 
 011111 RS RA RB 0010 U  10111 0
@@ -858,6 +1499,12 @@ stwx
     if(U) r[RA] = ea;
 
 ===
+stwxe
+
+011111 RS RA RB 0010 U  11111 0
+0      6  11 16 21   25 26    31
+
+===
 stwbrx
 
 011111 RS RA RB 1010010110 0
@@ -865,6 +1512,22 @@ stwbrx
 
     uint32_t ea = (RA ? r[RA] : 0) + r[RB];
     store<uint32_t>(ea, swap32(r[RS]));
+
+===
+stwbrxe
+
+011111 RS RA RB 1010011110 0
+0      6  11 16 21         31
+
+===
+stwcx
+011111 RS RA RB 0010010110 1
+0      6  11 16 21         31
+
+===
+stwcxe
+011111 RS RA RB 0010011110 1
+0      6  11 16 21         31
 
 ===
 
@@ -890,7 +1553,26 @@ subfc
     if(OE) overflow(val);
     if(Rc) record(0,val);
     CA = (val >> 32) & 1;
-  
+
+===
+
+subfe
+
+011111 RT RA RB OE 010001000 Rc
+0      6  11 16 21 22        31
+
+    int64_t val = (int64_t)(int32_t)~r[RA] + (int64_t)(int32_t)r[RB] + (CA ? 1 : 0);
+    r[RT] = val;
+    if(OE) overflow(val);
+    if(Rc) record(0,val);
+    CA = (val >> 32) & 1;
+===
+
+subfe64
+
+011111 RT RA RB OE 110001000 Rc
+0      6  11 16 21 22        31
+
 ===
 
 subfic
@@ -913,7 +1595,14 @@ subfme
     if(OE) overflow(val);
     if(Rc) record(0,val);
     CA = (val >> 32) & 1;
-  
+
+===
+
+subfme64
+
+011111 RT RA 00000 OE 111101000 Rc
+0      6  11 16    21 22        31
+
 ===
 
 subfze
@@ -926,7 +1615,71 @@ subfze
     if(OE) overflow(val);
     if(Rc) record(0,val);
     CA = (val >> 32) & 1;
-  
+
+===
+
+subfze64
+
+011111 RT RA 00000 OE 111001010 Rc
+0      6  11 16    21 22        31
+
+===
+
+td
+011111 TO RA RB 0001000100 0
+0      6  11 16 21         31
+
+===
+
+tdi
+000010 TO RA SI
+0      6  11 16
+
+===
+tlbivax
+011111 00000 RA RB 110001001 E  0
+0      6     11 16 21        30 31
+
+===
+tlbre
+011111 TLB 1110110010 0
+0      6   21         31
+
+===
+tlbsx
+011111 TLB RA RB 111001001 E  TLB1
+0      6   11 16 21        30 31
+
+===
+tlbsync
+011111 000000000000000 100110110 0
+0      6               21        31
+
+===
+tlbwe
+011111 TLB 1111010010 0
+0      6   21         31
+
+===
+tw
+011111 TO RA RB 0000000100 0
+0      6  11 17 21         31
+
+===
+twi
+000011 TO RA SI
+0      6  11 16
+
+===
+wrtee
+011111 RS 0000000000 0010000011 0
+0      6  11         21         31
+
+===
+wrteei
+011111 0000000000 E  0000 0010100011 0
+0      6          16 17   21         31
+
 ===
 
 xor

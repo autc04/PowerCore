@@ -29,7 +29,7 @@ public:
     template<typename... Args>
     void error(Args... args)
     {
-        std::cerr << oldLineno << ": ";
+        std::cerr << definitionFile << ":" << oldLineno << ": ";
         (std::cerr << ... << args);
         std::cerr << std::endl;
         std::exit(1);
