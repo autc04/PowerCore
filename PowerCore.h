@@ -55,6 +55,8 @@ protected:
     void store(uint32_t addr, T value);
 
     bool conditional(uint32_t BO, uint32_t BI);
+
+    void unimplemented(const char* name);
 };
 
 inline void *PowerCore::translateAddress(uint32_t addr)

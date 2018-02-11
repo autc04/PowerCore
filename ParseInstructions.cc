@@ -197,7 +197,6 @@ public:
 InstructionInfo::InstructionInfo(InputParser& in)
 {
     name = in.get();
-    std::cout << "// insn: " << name << std::endl;
 
     std::string format = in.get();
     std::string bits = in.get();
@@ -225,7 +224,14 @@ InstructionInfo::InstructionInfo(InputParser& in)
     for(int i = 0; i < fieldLabels.size(); i++)
         fields.emplace_back(fieldBits[i], fieldBits[i+1], fieldLabels[i]);
 
-    code = in.getBlock();
+    if(in.peek() == "===")
+    {
+        code = "unimplemented(\"" + name + "\")\n;";
+    }
+    else
+    {
+        code = in.getBlock();
+    }
     lineno = in.getLineno();
 
     if(in.get() != "===")

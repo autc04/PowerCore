@@ -24,14 +24,19 @@ void PowerCore::interpret1()
             ;
 #include "generated.interpret1.h"
         else
-        {
-            std::cerr << "Unknown instruction at " << std::hex << CIA
-                << ": " << std::hex << insn << std::endl;
-        }
+            unimplemented("(unknown)");
 
         CIA = NIA;
     }
 }
+
+void PowerCore::unimplemented(const char* name)
+{
+    uint32_t insn = load<uint32_t>(CIA);
+    std::cerr << "Unimplemented instruction " << name << " at " << std::hex << CIA
+                << ": " << std::hex << insn << std::endl;
+}
+
 
 int main()
 {
