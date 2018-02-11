@@ -22,6 +22,7 @@ public:
     std::string get();
     std::string peek() { return str; }
     std::string getBlock();
+    int getLineno() { return oldLineno; }
 
     template<typename... Args>
     void error(Args... args)
@@ -74,6 +75,7 @@ std::string InputParser::getBlock()
 {
     if(!good)
         error("unexpected EOF, block expected");
+    oldLineno = lineno;
     std::ostringstream out;
     out << str << std::endl;
     str = "";
@@ -182,15 +184,17 @@ class InstructionInfo
     std::string name;
     std::vector<Field> fields;
     std::string code;
+    int lineno;
 public:
     InstructionInfo(InputParser& in);
 
-    void generateIf(std::ostream& out);
+    void generateElseIf(std::ostream& out);
+    void generateSeparateFunc(std::ostream& out);
 };
 
 InstructionInfo::InstructionInfo(InputParser& in)
 {
-    std::string name = in.get();
+    name = in.get();
     std::cout << "// insn: " << name << std::endl;
 
     std::string format = in.get();
@@ -220,14 +224,15 @@ InstructionInfo::InstructionInfo(InputParser& in)
         fields.emplace_back(fieldBits[i], fieldBits[i+1], fieldLabels[i]);
 
     code = in.getBlock();
+    lineno = in.getLineno();
 
     if(in.get() != "===")
         in.error("'===' expected at end of instruction");
 }
 
-void InstructionInfo::generateIf(std::ostream& out)
+void InstructionInfo::generateElseIf(std::ostream& out)
 {
-    out << "if(";
+    out << "else if(";
     SeparatedListHelper slh(out, " && ");
     for(auto f : fields)
         f.generateCondition(slh);
@@ -236,20 +241,44 @@ void InstructionInfo::generateIf(std::ostream& out)
     for(auto f : fields)
         f.generateDecl(out);
     out << "\n";
+    out << "#line " << std::dec << lineno << " \"powerpc.ppcdef\"\n";
     out << code;
     out << "}\n";
 }
 
-int main()
+void InstructionInfo::generateSeparateFunc(std::ostream& out)
 {
-    std::ifstream stream("powerpc.ppcdef");
-    //std::vector<InstructionInfo> insns;
+    out << "struct insn_" << name << " : PowerCore { void exec(uint32_t insn); };\n";
+    out << "void insn_" << name << "::exec(uint32_t insn)\n";
+    out << "{\n";
+    for(auto f : fields)
+        f.generateDecl(out);
+    out << "\n";
+    out << "#line " << std::dec << lineno << " \"powerpc.ppcdef\"\n";
+    out << code;
+    out << "}\n";
+}
+
+int main(int argc, char *argv[])
+{
+    if(argc != 2)
+        return 1;
+    std::ifstream stream(argv[1]);
+    std::vector<InstructionInfo> insns;
     InputParser in(stream);
     while(in.haveMore())
     {
-        //insns.emplace_back(in);
-        InstructionInfo(in).generateIf(std::cout);
+        insns.emplace_back(in);
     }
+
+    for(auto insn : insns)
+    {
+        insn.generateElseIf(std::cout);
+    }
+
+    /*std::cout << "#include \"PowerCore.h\"\n";
+    for(auto insn : insns)
+        insn.generateSeparateFunc(std::cout);*/
 
     return 0;
 }

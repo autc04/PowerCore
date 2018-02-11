@@ -50,7 +50,7 @@ addic
 00110 Rc RT RA SI
 0     5  6  11 16
 
-    int64_t val = (int64_t)(int32_t)(RA ? r[RA] : 0) + ((int16_t)SI << (S ? 16 : 0));
+    int64_t val = (int64_t)(int32_t)(RA ? r[RA] : 0) + (int16_t)SI;
     if(Rc) record(0,val);
     CA = (val >> 32) & 1;
 
@@ -111,16 +111,54 @@ andi
 
     uint32_t val = r[RS] & (UI << (S ? 16 : 0));
     r[RA] = val;
-    if(Rc) record(0,val);
 
 ===
 
 // b, ba, bl, bla
+
+b
+010010 LI AA LK
+0      6  30 31
+
+    if(LK) lr = NIA;
+    int32_t val = LI << 2;
+    if(val & 0x02000000)
+        val |= 0xFC000000;
+    NIA = (AA ? 0 : CIA) + val;
+
+===
 // be, bea, bel, bela
-// bc, ...
+
+bc
+010000 BO BI BD AA LK
+0      6  11 16 30 31
+
+    if(LK) lr = NIA;
+    if(conditional(BO, BI))
+        NIA = (AA ? 0 : CIA) + (int16_t) (BD<<2);
+
+===
 // bce, ...
-// bcctr, ...
-// bclr, ...
+
+bcctr
+010011 BO BI 00000 1000010000 LK
+0      6  11 16    21         31
+
+    if(LK) lr = NIA;
+    if(conditional(BO | 0x4, BI))
+        NIA = ctr & ~3;
+
+===
+bclr
+
+010011 BO BI 00000 0000010000 LK
+0      6  11 16    21         31
+
+    if(LK) lr = NIA;
+    if(conditional(BO, BI))
+        NIA = lr & ~3;
+
+===
 
 cmp
 
@@ -358,5 +396,307 @@ isync
 0      6               21         31
 
     ;
+
+===
+lbz
+
+10001 U RT RA D
+0     5 6  11 16
+
+    uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
+    r[RT] = load<uint8_t>(ea);
+    if(U) r[RA] = ea;
+
+===
+lbzx
+
+011111 RT RA RB 0001 U  10111 0
+0      6  11 16 21   25 26    31
+
+    uint32_t ea = (RA ? r[RA] : 0) + r[RB];
+    r[RT] = load<uint8_t>(ea);
+    if(U) r[RA] = ea;
+
+===
+lha
+
+10101 U RT RA D
+0     5 6  11 16
+
+    uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
+    r[RT] = (int32_t) load<int16_t>(ea);
+    if(U) r[RA] = ea;
+
+===
+lhax
+
+011111 RT RA RB 0101 U  10111 0
+0      6  11 16 21   25 26    31
+
+    uint32_t ea = (RA ? r[RA] : 0) + r[RB];
+    r[RT] = (int32_t) load<int16_t>(ea);
+    if(U) r[RA] = ea;
+
+===
+lhbrx
+
+011111 RT RA RB 1100010110 0
+0      6  11 16 21         31
+
+    uint32_t ea = (RA ? r[RA] : 0) + r[RB];
+    r[RT] = swap16( load<uint16_t>(ea) );
+
+===
+lwbrx
+
+011111 RT RA RB 1000010110 0
+0      6  11 16 21         31
+
+    uint32_t ea = (RA ? r[RA] : 0) + r[RB];
+    r[RT] = swap32( load<uint32_t>(ea) );
+
+===
+lhz
+
+10100 U RT RA D
+0     5 6  11 16
+
+    uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
+    r[RT] = load<uint16_t>(ea);
+    if(U) r[RA] = ea;
+
+===
+lhzx
+
+011111 RT RA RB 0100 U  10111 0
+0      6  11 16 21   25 26    31
+
+    uint32_t ea = (RA ? r[RA] : 0) + r[RB];
+    r[RT] = load<uint16_t>(ea);
+    if(U) r[RA] = ea;
+
+===
+lwz
+
+10000 U RT RA D
+0     5 6  11 16
+
+    uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
+    r[RT] = load<uint32_t>(ea);
+    if(U) r[RA] = ea;
+
+===
+lwzx
+
+011111 RT RA RB 0000 U  10111 0
+0      6  11 16 21   25 26    31
+
+    uint32_t ea = (RA ? r[RA] : 0) + r[RB];
+    r[RT] = load<uint32_t>(ea);
+    if(U) r[RA] = ea;
+
+===
+mcrf
+
+010011 BF 00 BFA 0000000 0000000000 0
+0      6  9  11  14      21         31
+
+    setcr(BFA, getcr(BF));
+
+===
+mfcr
+
+011111 RT 0000000000 0000010011 0
+0      6  11         21         31
+
+    r[RT] = cr;
+
+===
+mcrxr
+
+011111 BF 000000000000 1000000000 0
+0      6  9            21         31
+
+    ; // TODO
+
+===
+mflr
+
+011111 RT 01000 00000 0101010011 0
+0      6  11    16    21         31
+
+    r[RT] = lr;
+
+===
+mfctr
+
+011111 RT 01001 00000 0101010011 0
+0      6  11    16    21         31
+
+    r[RT] = ctr;
+
+===
+msync
+
+011111 000000000000000 1001010110 0
+0      6               21         31
+
+    ;
+
+===
+mtcrf
+
+011111 RS 0  FXM 0  0010010000 0
+0      6  11 12  20 21         31
+
+    for(int i = 0; i < 8; i++)
+        if(FXM & (1>>i))
+            setcr(i, (r[RS] >> (7-i) * 4) & 0xF);
+
+===
+mtlr
+
+011111 RS 01000 00000 0111010011 0
+0      6  11    16    21         31
+
+    lr = r[RS];
+
+===
+mtctr
+
+011111 RS 01001 00000 0111010011 0
+0      6  11    16    21         31
+
+    ctr = r[RS];
+
+===
+mulhw
+
+011111 RT RA RB 0  001001011 Rc
+0      6  11 16 21 22        31
+
+    int64_t prod = (int64_t)(int32_t)r[RA] * (int64_t)(int32_t)r[RB];
+    if(Rc) record(0, prod >> 32);
+    r[RT] = prod >> 32;
+
+===
+mulhwu
+
+011111 RT RA RB 0  000001011 Rc
+0      6  11 16 21 22        31
+
+    uint64_t prod = (uint64_t)r[RA] * (uint64_t)r[RB];
+    if(Rc) record(0, (int64_t)prod >> 32);
+    r[RT] = prod >> 32;
+
+===
+
+or
+
+011111 RS RA RB 0110111100 Rc
+0      6  11 16 21         31
+
+    uint32_t val = r[RS] | r[RB];
+    r[RA] = val;
+    if(Rc) record(0,val);
+
+===
+
+orc
+
+011111 RS RA RB 0110011100 Rc
+0      6  11 16 21         31
+
+    uint32_t val = r[RS] | ~r[RB];
+    r[RA] = val;
+    if(Rc) record(0,val);
+
+===
+
+ori
+
+01100 S RS RA UI
+0     5 6  11 16
+
+    uint32_t val = r[RS] | (UI << (S ? 16 : 0));
+    r[RA] = val;
+
+===
+stb
+
+10011 U RS RA D
+0     5 6  11 16
+
+    uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
+    store<uint8_t>(ea, r[RS]);
+    if(U) r[RA] = ea;
+
+===
+stbx
+
+011111 RS RA RB 0011 U  10111 0
+0      6  11 16 21   25 26    31
+
+    uint32_t ea = (RA ? r[RA] : 0) + r[RB];
+    store<uint8_t>(ea, r[RS]);
+    if(U) r[RA] = ea;
+
+===
+sth
+
+10110 U RS RA D
+0     5 6  11 16
+
+    uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
+    store<uint16_t>(ea, r[RS]);
+    if(U) r[RA] = ea;
+
+===
+sthx
+
+011111 RS RA RB 0110 U  10111 0
+0      6  11 16 21   25 26    31
+
+    uint32_t ea = (RA ? r[RA] : 0) + r[RB];
+    store<uint16_t>(ea, r[RS]);
+    if(U) r[RA] = ea;
+
+===
+sthbrx
+
+011111 RS RA RB 1110010110 0
+0      6  11 16 21         31
+
+    uint32_t ea = (RA ? r[RA] : 0) + r[RB];
+    store<uint16_t>(ea, swap16(r[RS]));
+
+===
+stw
+
+10010 U RS RA D
+0     5 6  11 16
+
+    uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
+    store<uint32_t>(ea, r[RS]);
+    if(U) r[RA] = ea;
+
+===
+stwx
+
+011111 RS RA RB 0010 U  10111 0
+0      6  11 16 21   25 26    31
+
+    uint32_t ea = (RA ? r[RA] : 0) + r[RB];
+    store<uint32_t>(ea, r[RS]);
+    if(U) r[RA] = ea;
+
+===
+stwbrx
+
+011111 RS RA RB 1010010110 0
+0      6  11 16 21         31
+
+    uint32_t ea = (RA ? r[RA] : 0) + r[RB];
+    store<uint32_t>(ea, swap32(r[RS]));
 
 ===
