@@ -32,19 +32,22 @@ public:
     bool OV = false;
     bool CA = false;
     
-    void *memoryBases[4];
+    void *memoryBases[4] = { 0,0,0,0 };
 
     void interpret1();
 
+    uint32_t getXER() const;
+    void setXER(uint32_t xer);
+
 protected:
     void setcr(int field, uint32_t x);
-    uint32_t getcr(int field);
+    uint32_t getcr(int field) const;
     void record(int field, int32_t val);
     void overflow(int64_t val);
     void crbit(int bit, bool v);
-    bool crbit(int bit);
+    bool crbit(int bit) const;
 
-    void * translateAddress(uint32_t addr);
+    void * translateAddress(uint32_t addr) const;
 
     template<typename T>
     T load(uint32_t addr);

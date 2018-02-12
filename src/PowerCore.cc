@@ -1,8 +1,19 @@
 #include <PowerCore.h>
 #include <iostream>
 
+void PowerCore::setXER(uint32_t XER)
+{
+    SO = !! (XER & (1<<31));
+    OV = !! (XER & (1<<30));
+    CA = !! (XER & (1<<29));
+}
 
-inline void *PowerCore::translateAddress(uint32_t addr)
+uint32_t PowerCore::getXER() const
+{
+    return ((uint32_t)SO << 31) | ((uint32_t)OV << 30) | ((uint32_t)CA << 29);
+}
+
+inline void *PowerCore::translateAddress(uint32_t addr) const
 {
     return ((char*)memoryBases[addr >> 30]) + addr;
 }
@@ -11,7 +22,7 @@ inline void PowerCore::setcr(int field, uint32_t x)
 {
     cr = (cr & (~0xF << (7-field)*4)) | (x << (7-field)*4);
 }
-inline uint32_t PowerCore::getcr(int field)
+inline uint32_t PowerCore::getcr(int field) const
 {
     return (cr >> (7-field)*4) & 0xF;
 }
@@ -36,7 +47,7 @@ inline void PowerCore::crbit(int bit, bool v)
 {
     cr = (cr & (0x7FFFFFFFU >> bit)) | (v << (31-bit));
 }
-inline bool PowerCore::crbit(int bit)
+inline bool PowerCore::crbit(int bit) const
 {
     return (cr & (0x80000000U >> bit)) != 0;
 }

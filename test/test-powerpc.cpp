@@ -30,9 +30,15 @@
 #include <signal.h>
 #include <ctype.h>
 #include <math.h>
+#include <stdint.h>
+#include <string.h>
 
 #if defined(__powerpc__) || defined(__ppc__)
 #define NATIVE_POWERPC
+#endif
+
+#if EMU_POWERCORE
+#include <PowerCore.h>
 #endif
 
 #if EMU_KHEPERIX
@@ -44,8 +50,6 @@
 
 #if EMU_MICROLIB
 #include <ppcemul.h>
-typedef unsigned int uint32;
-typedef unsigned long uintptr;
 #undef RD
 #undef RA
 #undef RB
@@ -57,9 +61,6 @@ typedef unsigned long uintptr;
 extern "C" {
 #include "ppc.h"
 }
-typedef unsigned int uint32;
-typedef unsigned long uintptr;
-typedef uint32_t UINT32;
 typedef char CHAR;
 typedef int BOOL;
 #endif
@@ -69,8 +70,6 @@ extern "C" {
 #include "target-ppc/cpu.h"
 extern void tb_flush();
 }
-typedef uint32_t uint32;
-typedef uintptr_t uintptr;
 #endif
 
 // Disassemblers needed for debugging purposes
@@ -109,11 +108,11 @@ typedef uintptr_t uintptr;
 
 // Partial PowerPC runtime assembler from GNU lightning
 #undef  _I
-#define _I(X)			((uint32)(X))
+#define _I(X)			((uint32_t)(X))
 #undef  _UL
-#define _UL(X)			((uint32)(X))
+#define _UL(X)			((uint32_t)(X))
 #undef  _MASK
-#define _MASK(N)		((uint32)((1<<(N)))-1)
+#define _MASK(N)		((uint32_t)((1<<(N)))-1)
 #undef  _ck_s
 #define _ck_s(W,I)		(_UL(I) & _MASK(W))
 #undef  _ck_u
@@ -151,22 +150,22 @@ typedef uintptr_t uintptr;
 #define _VA(  OP,VD,VA,VB,VC,XO    )	_I((_u6(OP)<<26)|(_u5(VD)<<21)|(_u5(VA)<<16)|( _u5(VB)<<11)|(_u5(VC)<< 6)|  _u6(XO)            )
 
 // PowerPC opcodes
-static inline uint32 POWERPC_LI(int RD, uint32 v) { return _D(14,RD,00,(v&0xffff)); }
-static inline uint32 POWERPC_MR(int RD, int RA) { return _X(31,RA,RD,RA,444,0); }
-static inline uint32 POWERPC_MFCR(int RD) { return _X(31,RD,00,00,19,0); }
-static inline uint32 POWERPC_LVX(int vD, int rA, int rB) { return _X(31,vD,rA,rB,103,0); }
-static inline uint32 POWERPC_STVX(int vS, int rA, int rB) { return _X(31,vS,rA,rB,231,0); }
-static inline uint32 POWERPC_MFSPR(int rD, int SPR) { return _X(31,rD,(SPR&0x1f),((SPR>>5)&0x1f),339,0); }
-static inline uint32 POWERPC_MTSPR(int rS, int SPR) { return _X(31,rS,(SPR&0x1f),((SPR>>5)&0x1f),467,0); }
-const uint32 POWERPC_NOP = 0x60000000;
-const uint32 POWERPC_BLR = 0x4e800020;
-const uint32 POWERPC_BLRL = 0x4e800021;
-const uint32 POWERPC_ILLEGAL = 0x00000000;
-const uint32 POWERPC_EMUL_OP = 0x18000000;
+static inline uint32_t POWERPC_LI(int RD, uint32_t v) { return _D(14,RD,00,(v&0xffff)); }
+static inline uint32_t POWERPC_MR(int RD, int RA) { return _X(31,RA,RD,RA,444,0); }
+static inline uint32_t POWERPC_MFCR(int RD) { return _X(31,RD,00,00,19,0); }
+static inline uint32_t POWERPC_LVX(int vD, int rA, int rB) { return _X(31,vD,rA,rB,103,0); }
+static inline uint32_t POWERPC_STVX(int vS, int rA, int rB) { return _X(31,vS,rA,rB,231,0); }
+static inline uint32_t POWERPC_MFSPR(int rD, int SPR) { return _X(31,rD,(SPR&0x1f),((SPR>>5)&0x1f),339,0); }
+static inline uint32_t POWERPC_MTSPR(int rS, int SPR) { return _X(31,rS,(SPR&0x1f),((SPR>>5)&0x1f),467,0); }
+const uint32_t POWERPC_NOP = 0x60000000;
+const uint32_t POWERPC_BLR = 0x4e800020;
+const uint32_t POWERPC_BLRL = 0x4e800021;
+const uint32_t POWERPC_ILLEGAL = 0x00000000;
+const uint32_t POWERPC_EMUL_OP = 0x18000000;
 
 // Invalidate test cache
 #ifdef NATIVE_POWERPC
-static void inline ppc_flush_icache_range(uint32 *start_p, uint32 length)
+static void inline ppc_flush_icache_range(uint32_t *start_p, uint32_t length)
 {
 	const int MIN_CACHE_LINE_SIZE = 8; /* conservative value */
 
@@ -188,17 +187,40 @@ static void inline ppc_flush_icache_range(uint32 *start_p, uint32 length)
     asm volatile ("isync" : : : "memory");
 }
 #else
-static void inline ppc_flush_icache_range(uint32 *start_p, uint32 length)
+static void inline ppc_flush_icache_range(uint32_t *start_p, uint32_t length)
 {
 }
+#endif
+
+#if EMU_POWERCORE
+struct powerpc_cpu_base : private PowerCore
+{
+	void execute(uintptr_t addr)
+	{
+		CIA = addr;
+		interpret1();
+	}
+	void invalidate_cache_range(uint32_t *start, uint32_t size) {}
+	void enable_jit() { }
+	void invalidate_cache() { }
+
+	uint32_t emul_get_xer() const { return getXER(); }
+	void emul_set_xer(uint32_t value) { setXER(value); }
+	uint32_t emul_get_cr() const { return cr; }
+	void emul_set_cr(uint32_t value) { cr = value; }
+	uint32_t get_lr() const { return lr; }
+	void set_lr(uint32_t value) { lr = value; }
+	uint32_t get_gpr(int i) const { return r[i]; }
+	void set_gpr(int i, uint32_t value) { r[i] = value; }
+};
 #endif
 
 #if EMU_KHEPERIX
 // Wrappers when building from SheepShaver tree
 #ifdef SHEEPSHAVER
-uint32 ROMBase = 0x40800000;
+uint32_t ROMBase = 0x40800000;
 int64 TimebaseSpeed = 25000000;	// Default:  25 MHz
-uint32 PVR = 0x000c0000;		// Default: 7400 (with AltiVec)
+uint32_t PVR = 0x000c0000;		// Default: 7400 (with AltiVec)
 
 bool PrefsFindBool(const char *name)
 {
@@ -226,18 +248,18 @@ struct powerpc_cpu_base
 {
 	powerpc_cpu_base();
 	void init_decoder();
-	void execute_return(uint32 opcode);
-	void invalidate_cache_range(uint32 *start, uint32 size)
-		{ powerpc_cpu::invalidate_cache_range((uintptr)start, ((uintptr)start) + size); }
+	void execute_return(uint32_t opcode);
+	void invalidate_cache_range(uint32_t *start, uint32_t size)
+		{ powerpc_cpu::invalidate_cache_range((uintptr_t)start, ((uintptr_t)start) + size); }
 
-	uint32 emul_get_xer() const			{ return xer().get(); }
-	void emul_set_xer(uint32 value)		{ xer().set(value); }
-	uint32 emul_get_cr() const			{ return cr().get(); }
-	void emul_set_cr(uint32 value)		{ cr().set(value); }
-	uint32 get_lr() const				{ return lr(); }
-	void set_lr(uint32 value)			{ lr() = value; }
-	uint32 get_gpr(int i) const			{ return gpr(i); }
-	void set_gpr(int i, uint32 value)	{ gpr(i) = value; }
+	uint32_t emul_get_xer() const			{ return xer().get(); }
+	void emul_set_xer(uint32_t value)		{ xer().set(value); }
+	uint32_t emul_get_cr() const			{ return cr().get(); }
+	void emul_set_cr(uint32_t value)		{ cr().set(value); }
+	uint32_t get_lr() const				{ return lr(); }
+	void set_lr(uint32_t value)			{ lr() = value; }
+	uint32_t get_gpr(int i) const			{ return gpr(i); }
+	void set_gpr(int i, uint32_t value)	{ gpr(i) = value; }
 };
 
 powerpc_cpu_base::powerpc_cpu_base()
@@ -248,7 +270,7 @@ powerpc_cpu_base::powerpc_cpu_base()
 	init_decoder();
 }
 
-void powerpc_cpu_base::execute_return(uint32 opcode)
+void powerpc_cpu_base::execute_return(uint32_t opcode)
 {
 	spcflags().set(SPCFLAG_CPU_EXEC_RETURN);
 }
@@ -278,19 +300,19 @@ static volatile bool ppc_running = false;
 struct powerpc_cpu_base
 {
 	powerpc_cpu_base();
-	void execute(uintptr);
+	void execute(uintptr_t);
 	void enable_jit() { }
 	void invalidate_cache() { }
-	void invalidate_cache_range(uint32 *start, uint32 size) { }
+	void invalidate_cache_range(uint32_t *start, uint32_t size) { }
 
-	uint32 emul_get_xer() const			{ return XER; }
-	void emul_set_xer(uint32 value)		{ XER = value; }
-	uint32 emul_get_cr() const			{ return CR; }
-	void emul_set_cr(uint32 value)		{ CR = value; }
-	uint32 get_lr() const				{ return LR; }
-	void set_lr(uint32 value)			{ LR = value; }
-	uint32 get_gpr(int i) const			{ return GPR(i); }
-	void set_gpr(int i, uint32 value)	{ GPR(i) = value; }
+	uint32_t emul_get_xer() const			{ return XER; }
+	void emul_set_xer(uint32_t value)		{ XER = value; }
+	uint32_t emul_get_cr() const			{ return CR; }
+	void emul_set_cr(uint32_t value)		{ CR = value; }
+	uint32_t get_lr() const				{ return LR; }
+	void set_lr(uint32_t value)			{ LR = value; }
+	uint32_t get_gpr(int i) const			{ return GPR(i); }
+	void set_gpr(int i, uint32_t value)	{ GPR(i) = value; }
 };
 
 void sheep_impl(ppc_inst_t inst)
@@ -306,9 +328,9 @@ powerpc_cpu_base::powerpc_cpu_base()
 	init_table(6, sheep_impl, NULL, NULL, NULL, NULL, "sheep");
 }
 
-#define ppc_code_fetch(A)  ntohl(*((uint32 *)(A)))
+#define ppc_code_fetch(A)  ntohl(*((uint32_t *)(A)))
 
-void powerpc_cpu_base::execute(uintptr entry_point)
+void powerpc_cpu_base::execute(uintptr_t entry_point)
 {
 	PC = entry_point;
 
@@ -321,37 +343,37 @@ void powerpc_cpu_base::execute(uintptr entry_point)
 #endif
 
 #if EMU_MODEL3PPC
-extern "C" BOOL DisassemblePowerPC(UINT32, UINT32, CHAR *, CHAR *, BOOL);
-BOOL DisassemblePowerPC(UINT32, UINT32, CHAR *, CHAR *, BOOL) { }
+extern "C" BOOL DisassemblePowerPC(uint32_t, uint32_t, CHAR *, CHAR *, BOOL);
+BOOL DisassemblePowerPC(uint32_t, uint32_t, CHAR *, CHAR *, BOOL) { }
 
 static volatile bool ppc_running = false;
 
 struct powerpc_cpu_base
 {
 	powerpc_cpu_base();
-	void execute(uintptr);
+	void execute(uintptr_t);
 	void enable_jit() { }
 	void invalidate_cache() { }
-	void invalidate_cache_range(uint32 *start, uint32 size) { }
+	void invalidate_cache_range(uint32_t *start, uint32_t size) { }
 
-	uint32 emul_get_xer() const			{ return ppc_get_reg(PPC_REG_XER); }
-	void emul_set_xer(uint32 value)		{ ppc_set_reg(PPC_REG_XER, value); }
-	uint32 emul_get_cr() const			{ return ppc_get_reg(PPC_REG_CR); }
-	void emul_set_cr(uint32 value)		{ ppc_set_reg(PPC_REG_CR, value); }
-	uint32 get_lr() const				{ return ppc_get_reg(PPC_REG_LR); }
-	void set_lr(uint32 value)			{ ppc_set_reg(PPC_REG_LR, value); }
-	uint32 get_gpr(int i) const			{ return ppc_get_r(i); }
-	void set_gpr(int i, uint32 value)	{ ppc_set_r(i, value); }
+	uint32_t emul_get_xer() const			{ return ppc_get_reg(PPC_REG_XER); }
+	void emul_set_xer(uint32_t value)		{ ppc_set_reg(PPC_REG_XER, value); }
+	uint32_t emul_get_cr() const			{ return ppc_get_reg(PPC_REG_CR); }
+	void emul_set_cr(uint32_t value)		{ ppc_set_reg(PPC_REG_CR, value); }
+	uint32_t get_lr() const				{ return ppc_get_reg(PPC_REG_LR); }
+	void set_lr(uint32_t value)			{ ppc_set_reg(PPC_REG_LR, value); }
+	uint32_t get_gpr(int i) const			{ return ppc_get_r(i); }
+	void set_gpr(int i, uint32_t value)	{ ppc_set_r(i, value); }
 };
 
-static uint32 read_32(uint32 a)
+static uint32_t read_32(uint32_t a)
 {
-	return ntohl(*((uint32 *)a));
+	return ntohl(*((uint32_t *)a));
 }
 
-static uint32 read_op(uint32 a)
+static uint32_t read_op(uint32_t a)
 {
-	uint32 opcode = read_32(a);
+	uint32_t opcode = read_32(a);
 	if (opcode == POWERPC_EMUL_OP) {
 		ppc_running = false;
 		return POWERPC_NOP;
@@ -366,7 +388,7 @@ powerpc_cpu_base::powerpc_cpu_base()
 	ppc_set_read_op_handler((void *)&read_op);
 }
 
-void powerpc_cpu_base::execute(uintptr entry_point)
+void powerpc_cpu_base::execute(uintptr_t entry_point)
 {
 	ppc_set_reg(PPC_REG_PC, entry_point);
 
@@ -383,44 +405,44 @@ class powerpc_cpu_base
 public:
 	powerpc_cpu_base();
 	~powerpc_cpu_base();
-	void execute(uintptr);
+	void execute(uintptr_t);
 	void enable_jit() { }
 	void invalidate_cache() { tb_flush(); }
-	void invalidate_cache_range(uint32 *start, uint32 size) { invalidate_cache(); }
+	void invalidate_cache_range(uint32_t *start, uint32_t size) { invalidate_cache(); }
 
-	uint32 emul_get_xer() const;
-	void emul_set_xer(uint32 value);
-	uint32 emul_get_cr() const;
-	void emul_set_cr(uint32 value);
-	uint32 get_lr() const				{ return ppc->LR; }
-	void set_lr(uint32 value)			{ ppc->LR = value; }
-	uint32 get_gpr(int i) const			{ return ppc->gpr[i]; }
-	void set_gpr(int i, uint32 value)	{ ppc->gpr[i] = value; }
+	uint32_t emul_get_xer() const;
+	void emul_set_xer(uint32_t value);
+	uint32_t emul_get_cr() const;
+	void emul_set_cr(uint32_t value);
+	uint32_t get_lr() const				{ return ppc->LR; }
+	void set_lr(uint32_t value)			{ ppc->LR = value; }
+	uint32_t get_gpr(int i) const			{ return ppc->gpr[i]; }
+	void set_gpr(int i, uint32_t value)	{ ppc->gpr[i] = value; }
 };
 
-uint32 powerpc_cpu_base::emul_get_xer() const
+uint32_t powerpc_cpu_base::emul_get_xer() const
 {
-	uint32 xer = 0;
+	uint32_t xer = 0;
 	for (int i = 0; i < 32; i++)
 		xer |= ppc->xer[i] << i;
 	return xer;
 }
 
-void powerpc_cpu_base::emul_set_xer(uint32 value)
+void powerpc_cpu_base::emul_set_xer(uint32_t value)
 {
 	for (int i = 0; i < 32; i++)
 		ppc->xer[i] = (value >> i) & 1;
 }
 
-uint32 powerpc_cpu_base::emul_get_cr() const
+uint32_t powerpc_cpu_base::emul_get_cr() const
 {
-	uint32 cr = 0;
+	uint32_t cr = 0;
 	for (int i = 0; i < 8; i++)
 		cr |= (ppc->crf[i] & 15) << (28 - 4 * i);
 	return cr;
 }
 
-void powerpc_cpu_base::emul_set_cr(uint32 value)
+void powerpc_cpu_base::emul_set_cr(uint32_t value)
 {
 	for (int i = 0; i < 8; i++)
 		ppc->crf[i] = (value >> (28 - 4 * i)) & 15;
@@ -436,7 +458,7 @@ powerpc_cpu_base::~powerpc_cpu_base()
 	cpu_ppc_close(ppc);
 }
 
-void powerpc_cpu_base::execute(uintptr entry_point)
+void powerpc_cpu_base::execute(uintptr_t entry_point)
 {
 	ppc->nip = entry_point;
 	cpu_exec(ppc);
@@ -457,18 +479,18 @@ struct static_mask<FB, 31> {
 
 template< int FB, int FE >
 struct bit_field {
-	static inline uint32 mask() {
+	static inline uint32_t mask() {
 		return static_mask<FB, FE>::value;
 	}
-	static inline bool test(uint32 value) {
+	static inline bool test(uint32_t value) {
 		return value & mask();
 	}
-	static inline uint32 extract(uint32 value) {
-		const uint32 m = mask() >> (31 - FE);
+	static inline uint32_t extract(uint32_t value) {
+		const uint32_t m = mask() >> (31 - FE);
 		return (value >> (31 - FE)) & m;
 	}
-	static inline void insert(uint32 & data, uint32 value) {
-		const uint32 m = mask();
+	static inline void insert(uint32_t & data, uint32_t value) {
+		const uint32_t m = mask();
 		data = (data & ~m) | ((value << (31 - FE)) & m);
 	}
 };
@@ -524,12 +546,12 @@ typedef bit_field<  2,  2 > XER_CA_field;
 static bool has_altivec = true;
 
 // A 128-bit AltiVec register
-typedef uint8 vector_t[16];
+typedef uint8_t vector_t[16];
 
 class aligned_vector_t {
 	struct {
 		vector_t v;
-		uint8 pad[16];
+		uint8_t pad[16];
 	} vs;
 public:
 	aligned_vector_t()
@@ -539,7 +561,7 @@ public:
 	void copy(vector_t const & vi, int n = sizeof(vector_t))
 		{ clear(); memcpy(addr(), &vi, n); }
 	vector_t *addr() const
-		{ return (vector_t *)(((char *)&vs.v) + (16 - (((uintptr)&vs.v) % 16))); }
+		{ return (vector_t *)(((char *)&vs.v) + (16 - (((uintptr_t)&vs.v) % 16))); }
 	vector_t const & value() const
 		{ return *addr(); }
 	vector_t & value()
@@ -548,9 +570,9 @@ public:
 
 union vector_helper_t {
 	vector_t v;
-	uint8	b[16];
-	uint16	h[8];
-	uint32	w[4];
+	uint8_t	b[16];
+	uint16_t	h[8];
+	uint32_t	w[4];
 	float	f[4];
 };
 
@@ -634,9 +656,9 @@ static bool vector_equals(char type, vector_t const & a, vector_t const & b)
 		tolerance = 1. / 4096.;
 	  do_compare:
 		for (int i = 0; i < 4; i++) {
-			union { float f; uint32 i; } u, v;
-			u.i = ntohl(((uint32 *)&a)[i]);
-			v.i = ntohl(((uint32 *)&b)[i]);
+			union { float f; uint32_t i; } u, v;
+			u.i = ntohl(((uint32_t *)&a)[i]);
+			v.i = ntohl(((uint32_t *)&b)[i]);
 			if (!do_float_equals(u.f, v.f, tolerance))
 				return false;
 		}
@@ -648,7 +670,7 @@ static bool vector_equals(char type, vector_t const & a, vector_t const & b)
 
 static bool vector_all_eq(char type, vector_t const & b)
 {
-	uint32 v;
+	uint32_t v;
 	vector_helper_t x;
 	memcpy(&x.v, &b, sizeof(vector_t));
 
@@ -683,25 +705,25 @@ class powerpc_test_cpu
 	: public powerpc_cpu_base
 {
 #ifdef NATIVE_POWERPC
-	uint32 native_get_xer() const
-		{ uint32 xer; asm volatile ("mfxer %0" : "=r" (xer)); return xer; }
+	uint32_t native_get_xer() const
+		{ uint32_t xer; asm volatile ("mfxer %0" : "=r" (xer)); return xer; }
 
-	void native_set_xer(uint32 xer) const
+	void native_set_xer(uint32_t xer) const
 		{ asm volatile ("mtxer %0" : : "r" (xer)); }
 
-	uint32 native_get_cr() const
-		{ uint32 cr; asm volatile ("mfcr %0" : "=r" (cr)); return cr; }
+	uint32_t native_get_cr() const
+		{ uint32_t cr; asm volatile ("mfcr %0" : "=r" (cr)); return cr; }
 
-	void native_set_cr(uint32 cr) const
+	void native_set_cr(uint32_t cr) const
 		{ asm volatile ("mtcr %0" :  : "r" (cr)); }
 #endif
 
-	void flush_icache_range(uint32 *start, uint32 size)
+	void flush_icache_range(uint32_t *start, uint32_t size)
 		{ invalidate_cache_range(start, size); ppc_flush_icache_range(start, size); }
 
-	void print_xer_flags(uint32 xer) const;
-	void print_flags(uint32 cr, uint32 xer, int crf = 0) const;
-	void execute(uint32 *code);
+	void print_xer_flags(uint32_t xer) const;
+	void print_flags(uint32_t cr, uint32_t xer, int crf = 0) const;
+	void execute(uint32_t *code);
 
 public:
 
@@ -716,22 +738,22 @@ public:
 private:
 
 	static const bool verbose = false;
-	uint32 tests, errors;
+	uint32_t tests, errors;
 
 	// Results file for reference
 	FILE *results_file;
-	uint32 get32();
-	void put32(uint32 v);
+	uint32_t get32();
+	void put32(uint32_t v);
 	void get_vector(vector_t & v);
 	void put_vector(vector_t const & v);
 
 	// Initial CR0, XER states
-	uint32 init_cr;
-	uint32 init_xer;
+	uint32_t init_cr;
+	uint32_t init_xer;
 
 	// XER preset values to test with
-	std::vector<uint32> xer_values;
-	void gen_xer_values(uint32 use_mask, uint32 set_mask);
+	std::vector<uint32_t> xer_values;
+	void gen_xer_values(uint32_t use_mask, uint32_t set_mask);
 
 	// Emulated registers IDs
 	enum {
@@ -750,11 +772,11 @@ private:
 	};
 
 	struct vector_test_t {
-		uint8	name[14];
+		uint8_t	name[14];
 		char	type;
 		char	op_type;
-		uint32	opcode;
-		uint8	operands[4];
+		uint32_t	opcode;
+		uint8_t	operands[4];
 	};
 
 	struct vector_value_t {
@@ -762,27 +784,27 @@ private:
 		vector_t v;
 	};
 
-	static const uint32 reg_values[];
-	static const uint32 imm_values[];
-	static const uint32 msk_values[];
+	static const uint32_t reg_values[];
+	static const uint32_t imm_values[];
+	static const uint32_t msk_values[];
 	static const vector_value_t vector_values[];
 	static const vector_value_t vector_fp_values[];
 
-	void test_one_1(uint32 *code, const char *insn, uint32 a1, uint32 a2, uint32 a3, uint32 a0 = 0);
-	void test_one(uint32 *code, const char *insn, uint32 a1, uint32 a2, uint32 a3, uint32 a0 = 0);
-	void test_instruction_CNTLZ(const char *insn, uint32 opcode);
-	void test_instruction_RR___(const char *insn, uint32 opcode);
-	void test_instruction_RRI__(const char *insn, uint32 opcode);
+	void test_one_1(uint32_t *code, const char *insn, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a0 = 0);
+	void test_one(uint32_t *code, const char *insn, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a0 = 0);
+	void test_instruction_CNTLZ(const char *insn, uint32_t opcode);
+	void test_instruction_RR___(const char *insn, uint32_t opcode);
+	void test_instruction_RRI__(const char *insn, uint32_t opcode);
 #define  test_instruction_RRK__ test_instruction_RRI__
-	void test_instruction_RRS__(const char *insn, uint32 opcode);
-	void test_instruction_RRR__(const char *insn, uint32 opcode);
-	void test_instruction_RRRSH(const char *insn, uint32 opcode);
-	void test_instruction_RRIII(const char *insn, uint32 opcode);
-	void test_instruction_RRRII(const char *insn, uint32 opcode);
-	void test_instruction_CRR__(const char *insn, uint32 opcode);
-	void test_instruction_CRI__(const char *insn, uint32 opcode);
+	void test_instruction_RRS__(const char *insn, uint32_t opcode);
+	void test_instruction_RRR__(const char *insn, uint32_t opcode);
+	void test_instruction_RRRSH(const char *insn, uint32_t opcode);
+	void test_instruction_RRIII(const char *insn, uint32_t opcode);
+	void test_instruction_RRRII(const char *insn, uint32_t opcode);
+	void test_instruction_CRR__(const char *insn, uint32_t opcode);
+	void test_instruction_CRI__(const char *insn, uint32_t opcode);
 #define  test_instruction_CRK__ test_instruction_CRI__
-	void test_instruction_CCC__(const char *insn, uint32 opcode);
+	void test_instruction_CCC__(const char *insn, uint32_t opcode);
 
 	void test_add(void);
 	void test_sub(void);
@@ -794,9 +816,9 @@ private:
 	void test_compare(void);
 	void test_cr_logical(void);
 
-	void test_one_vector(uint32 *code, vector_test_t const & vt, uint8 *rA, uint8 *rB = 0, uint8 *rC = 0);
-	void test_one_vector(uint32 *code, vector_test_t const & vt, vector_t const *vA = 0, vector_t const *vB = 0, vector_t const *vC = 0)
-		{ test_one_vector(code, vt, (uint8 *)vA, (uint8 *)vB, (uint8 *)vC); }
+	void test_one_vector(uint32_t *code, vector_test_t const & vt, uint8_t *rA, uint8_t *rB = 0, uint8_t *rC = 0);
+	void test_one_vector(uint32_t *code, vector_test_t const & vt, vector_t const *vA = 0, vector_t const *vB = 0, vector_t const *vC = 0)
+		{ test_one_vector(code, vt, (uint8_t *)vA, (uint8_t *)vB, (uint8_t *)vC); }
 	void test_vector_load(void);
 	void test_vector_load_for_shift(void);
 	void test_vector_arith(void);
@@ -817,9 +839,9 @@ powerpc_test_cpu::~powerpc_test_cpu()
 #endif
 }
 
-uint32 powerpc_test_cpu::get32()
+uint32_t powerpc_test_cpu::get32()
 {
-	uint32 v;
+	uint32_t v;
 	if (fread(&v, sizeof(v), 1, results_file) != 1) {
 		fprintf(stderr, "ERROR: unexpected end of results file\n");
 		exit(EXIT_FAILURE);
@@ -827,9 +849,9 @@ uint32 powerpc_test_cpu::get32()
 	return ntohl(v);
 }
 
-void powerpc_test_cpu::put32(uint32 v)
+void powerpc_test_cpu::put32(uint32_t v)
 {
-	uint32 out = htonl(v);
+	uint32_t out = htonl(v);
 	if (fwrite(&out, sizeof(out), 1, results_file) != 1) {
 		fprintf(stderr, "could not write item to results file\n");
 		exit(EXIT_FAILURE);
@@ -852,15 +874,15 @@ void powerpc_test_cpu::put_vector(vector_t const & v)
 	}
 }
 
-void powerpc_test_cpu::execute(uint32 *code_p)
+void powerpc_test_cpu::execute(uint32_t *code_p)
 {
-	static uint32 code[2];
+	static uint32_t code[2];
 	code[0] = htonl(POWERPC_BLRL);
 	code[1] = htonl(POWERPC_EMUL_OP);
 
 #ifndef NATIVE_POWERPC
 	const int n_func_words = 1024;
-	static uint32 func[n_func_words];
+	static uint32_t func[n_func_words];
 	static int old_i;
   again:
 	int i = old_i;
@@ -870,7 +892,7 @@ void powerpc_test_cpu::execute(uint32 *code_p)
 			invalidate_cache();
 			goto again;
 		}
-		uint32 opcode = code_p[j];
+		uint32_t opcode = code_p[j];
 		func[i] = htonl(opcode);
 		if (opcode == POWERPC_BLR)
 			break;
@@ -879,23 +901,23 @@ void powerpc_test_cpu::execute(uint32 *code_p)
 	old_i = i;
 #endif
 
-	assert((uintptr)code_p <= UINT_MAX);
-	set_lr((uintptr)code_p);
+	assert((uintptr_t)code_p <= 0xFFFFFFFFU);
+	set_lr((uintptr_t)code_p);
 
-	assert((uintptr)code <= UINT_MAX);
-	powerpc_cpu_base::execute((uintptr)code);
+	assert((uintptr_t)code <= 0xFFFFFFFFU);
+	powerpc_cpu_base::execute((uintptr_t)code);
 }
 
-void powerpc_test_cpu::gen_xer_values(uint32 use_mask, uint32 set_mask)
+void powerpc_test_cpu::gen_xer_values(uint32_t use_mask, uint32_t set_mask)
 {
-	const uint32 mask = use_mask | set_mask;
+	const uint32_t mask = use_mask | set_mask;
 
 	// Always test with XER=0
 	xer_values.clear();
 	xer_values.push_back(0);
 
 	// Iterate over XER fields, only handle CA, OV, SO
-	for (uint32 m = 0x80000000; m != 0; m >>= 1) {
+	for (uint32_t m = 0x80000000; m != 0; m >>= 1) {
 		if (m & (CA | OV | SO) & mask) {
 			const int n_xer_values = xer_values.size();
 			for (int i = 0; i < n_xer_values; i++)
@@ -912,7 +934,7 @@ void powerpc_test_cpu::gen_xer_values(uint32 use_mask, uint32 set_mask)
 #endif
 }
 
-void powerpc_test_cpu::print_xer_flags(uint32 xer) const
+void powerpc_test_cpu::print_xer_flags(uint32_t xer) const
 {
 	printf("%s,%s,%s",
 		   (xer & XER_CA_field::mask() ? "CA" : "__"),
@@ -920,7 +942,7 @@ void powerpc_test_cpu::print_xer_flags(uint32 xer) const
 		   (xer & XER_SO_field::mask() ? "SO" : "__"));
 }
 
-void powerpc_test_cpu::print_flags(uint32 cr, uint32 xer, int crf) const
+void powerpc_test_cpu::print_flags(uint32_t cr, uint32_t xer, int crf) const
 {
 	cr = cr << (4 * crf);
 	printf("%s,%s,%s,%s,%s,%s",
@@ -937,7 +959,7 @@ void powerpc_test_cpu::print_flags(uint32 cr, uint32 xer, int crf) const
 	test_instruction_##FORMAT(NATIVE_OP, EMUL_OP);			\
 } while (0)
 
-void powerpc_test_cpu::test_one(uint32 *code, const char *insn, uint32 a1, uint32 a2, uint32 a3, uint32 a0)
+void powerpc_test_cpu::test_one(uint32_t *code, const char *insn, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a0)
 {
 	// Iterate over test XER values as input
 	const int n_xer_values = xer_values.size();
@@ -948,19 +970,19 @@ void powerpc_test_cpu::test_one(uint32 *code, const char *insn, uint32 a1, uint3
 	init_xer = 0;
 }
 
-void powerpc_test_cpu::test_one_1(uint32 *code, const char *insn, uint32 a1, uint32 a2, uint32 a3, uint32 a0)
+void powerpc_test_cpu::test_one_1(uint32_t *code, const char *insn, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a0)
 {
 #ifdef NATIVE_POWERPC
 	// Invoke native code
-	const uint32 save_xer = native_get_xer();
-	const uint32 save_cr = native_get_cr();
+	const uint32_t save_xer = native_get_xer();
+	const uint32_t save_cr = native_get_cr();
 	native_set_xer(init_xer);
 	native_set_cr(init_cr);
-	typedef uint32 (*func_t)(uint32, uint32, uint32);
+	typedef uint32_t (*func_t)(uint32_t, uint32_t, uint32_t);
 	func_t func = (func_t)code;
-	const uint32 native_rd = func(a0, a1, a2);
-	const uint32 native_xer = native_get_xer();
-	const uint32 native_cr = native_get_cr();
+	const uint32_t native_rd = func(a0, a1, a2);
+	const uint32_t native_xer = native_get_xer();
+	const uint32_t native_cr = native_get_cr();
 	native_set_xer(save_xer);
 	native_set_cr(save_cr);
 	if (results_file) {
@@ -969,9 +991,9 @@ void powerpc_test_cpu::test_one_1(uint32 *code, const char *insn, uint32 a1, uin
 		put32(native_cr);
 	}
 #else
-	const uint32 native_rd = get32();
-	const uint32 native_xer = get32();
-	const uint32 native_cr = get32();
+	const uint32_t native_rd = get32();
+	const uint32_t native_xer = get32();
+	const uint32_t native_cr = get32();
 #endif
 
 	if (SKIP_ALU_OPS)
@@ -984,9 +1006,9 @@ void powerpc_test_cpu::test_one_1(uint32 *code, const char *insn, uint32 a1, uin
 	set_gpr(RA, a1);
 	set_gpr(RB, a2);
 	execute(code);
-	const uint32 emul_rd = get_gpr(RD);
-	const uint32 emul_xer = emul_get_xer();
-	const uint32 emul_cr = emul_get_cr();
+	const uint32_t emul_rd = get_gpr(RD);
+	const uint32_t emul_xer = emul_get_xer();
+	const uint32_t emul_cr = emul_get_cr();
 	
 	++tests;
 
@@ -1007,7 +1029,7 @@ void powerpc_test_cpu::test_one_1(uint32 *code, const char *insn, uint32 a1, uin
 
 	if (!ok || verbose) {
 #if ENABLE_MON
-		disass_ppc(stdout, (uintptr)code, code[0]);
+		disass_ppc(stdout, (uintptr_t)code, code[0]);
 #endif
 #define PRINT_OPERANDS(PREFIX) do {						\
 			printf(" %08x, %08x, %08x, %08x => %08x [",	\
@@ -1021,7 +1043,7 @@ void powerpc_test_cpu::test_one_1(uint32 *code, const char *insn, uint32 a1, uin
 	}
 }
 
-const uint32 powerpc_test_cpu::reg_values[] = {
+const uint32_t powerpc_test_cpu::reg_values[] = {
 	0x00000000, 0x10000000, 0x20000000,
 	0x30000000, 0x40000000, 0x50000000,
 	0x60000000, 0x70000000, 0x80000000,
@@ -1036,7 +1058,7 @@ const uint32 powerpc_test_cpu::reg_values[] = {
 	0xcccccccc, 0xdddddddd, 0xeeeeeeee
 };
 
-const uint32 powerpc_test_cpu::imm_values[] = {
+const uint32_t powerpc_test_cpu::imm_values[] = {
 	0x0000, 0x1000, 0x2000,
 	0x3000, 0x4000, 0x5000,
 	0x6000, 0x7000, 0x8000,
@@ -1051,16 +1073,16 @@ const uint32 powerpc_test_cpu::imm_values[] = {
 	0xcccc, 0xdddd, 0xeeee
 };
 
-const uint32 powerpc_test_cpu::msk_values[] = {
+const uint32_t powerpc_test_cpu::msk_values[] = {
 	0, 1,
 //	15, 16, 17,
 	30, 31
 };
 
-void powerpc_test_cpu::test_instruction_CNTLZ(const char *insn, uint32 opcode)
+void powerpc_test_cpu::test_instruction_CNTLZ(const char *insn, uint32_t opcode)
 {
 	// Test code
-	static uint32 code[] = {
+	static uint32_t code[] = {
 		POWERPC_ILLEGAL, POWERPC_BLR,
 		POWERPC_MR(0, RA), POWERPC_ILLEGAL, POWERPC_BLR
 	};
@@ -1072,23 +1094,23 @@ void powerpc_test_cpu::test_instruction_CNTLZ(const char *insn, uint32 opcode)
 	rA_field::insert(code[3], 0);		// <op> RD,R0,RB
 	flush_icache_range(code, sizeof(code));
 
-	for (uint32 mask = 0x80000000; mask != 0; mask >>= 1) {
-		uint32 ra = mask;
+	for (uint32_t mask = 0x80000000; mask != 0; mask >>= 1) {
+		uint32_t ra = mask;
 		test_one(&code[0], insn, ra, 0, 0);
 		test_one(&code[2], insn, ra, 0, 0);
 	}
 	// random values (including zero)
 	for (int i = 0; i < n_values; i++) {
-		uint32 ra = reg_values[i];
+		uint32_t ra = reg_values[i];
 		test_one(&code[0], insn, ra, 0, 0);
 		test_one(&code[2], insn, ra, 0, 0);
 	}
 }
 
-void powerpc_test_cpu::test_instruction_RR___(const char *insn, uint32 opcode)
+void powerpc_test_cpu::test_instruction_RR___(const char *insn, uint32_t opcode)
 {
 	// Test code
-	static uint32 code[] = {
+	static uint32_t code[] = {
 		POWERPC_ILLEGAL, POWERPC_BLR,
 		POWERPC_MR(0, RA), POWERPC_ILLEGAL, POWERPC_BLR
 	};
@@ -1101,16 +1123,16 @@ void powerpc_test_cpu::test_instruction_RR___(const char *insn, uint32 opcode)
 	flush_icache_range(code, sizeof(code));
 
 	for (int i = 0; i < n_values; i++) {
-		uint32 ra = reg_values[i];
+		uint32_t ra = reg_values[i];
 		test_one(&code[0], insn, ra, 0, 0);
 		test_one(&code[2], insn, ra, 0, 0);
 	}
 }
 
-void powerpc_test_cpu::test_instruction_RRI__(const char *insn, uint32 opcode)
+void powerpc_test_cpu::test_instruction_RRI__(const char *insn, uint32_t opcode)
 {
 	// Test code
-	static uint32 code[] = {
+	static uint32_t code[] = {
 		POWERPC_ILLEGAL, POWERPC_BLR,
 		POWERPC_MR(0, RA), POWERPC_ILLEGAL, POWERPC_BLR
 	};
@@ -1120,24 +1142,24 @@ void powerpc_test_cpu::test_instruction_RRI__(const char *insn, uint32 opcode)
 	const int n_imm_values = sizeof(imm_values)/sizeof(imm_values[0]);
 
 	for (int j = 0; j < n_imm_values; j++) {
-		const uint32 im = imm_values[j];
-		uint32 op = opcode;
+		const uint32_t im = imm_values[j];
+		uint32_t op = opcode;
 		UIMM_field::insert(op, im);
 		code[0] = code[3] = op;				// <op> RD,RA,IM
 		rA_field::insert(code[3], 0);		// <op> RD,R0,IM
 		flush_icache_range(code, sizeof(code));
 		for (int i = 0; i < n_reg_values; i++) {
-			const uint32 ra = reg_values[i];
+			const uint32_t ra = reg_values[i];
 			test_one(&code[0], insn, ra, im, 0);
 			test_one(&code[2], insn, ra, im, 0);
 		}
 	}
 }
 
-void powerpc_test_cpu::test_instruction_RRS__(const char *insn, uint32 opcode)
+void powerpc_test_cpu::test_instruction_RRS__(const char *insn, uint32_t opcode)
 {
 	// Test code
-	static uint32 code[] = {
+	static uint32_t code[] = {
 		POWERPC_ILLEGAL, POWERPC_BLR,
 		POWERPC_MR(0, RA), POWERPC_ILLEGAL, POWERPC_BLR
 	};
@@ -1146,22 +1168,22 @@ void powerpc_test_cpu::test_instruction_RRS__(const char *insn, uint32 opcode)
 	const int n_values = sizeof(reg_values)/sizeof(reg_values[0]);
 
 	for (int j = 0; j < 32; j++) {
-		const uint32 sh = j;
+		const uint32_t sh = j;
 		SH_field::insert(opcode, sh);
 		code[0] = code[3] = opcode;
 		rA_field::insert(code[3], 0);
 		flush_icache_range(code, sizeof(code));
 		for (int i = 0; i < n_values; i++) {
-			const uint32 ra = reg_values[i];
+			const uint32_t ra = reg_values[i];
 			test_one(&code[0], insn, ra, sh, 0);
 		}
 	}
 }
 
-void powerpc_test_cpu::test_instruction_RRR__(const char *insn, uint32 opcode)
+void powerpc_test_cpu::test_instruction_RRR__(const char *insn, uint32_t opcode)
 {
 	// Test code
-	static uint32 code[] = {
+	static uint32_t code[] = {
 		POWERPC_ILLEGAL, POWERPC_BLR,
 		POWERPC_MR(0, RA), POWERPC_ILLEGAL, POWERPC_BLR
 	};
@@ -1174,19 +1196,19 @@ void powerpc_test_cpu::test_instruction_RRR__(const char *insn, uint32 opcode)
 	flush_icache_range(code, sizeof(code));
 
 	for (int i = 0; i < n_values; i++) {
-		const uint32 ra = reg_values[i];
+		const uint32_t ra = reg_values[i];
 		for (int j = 0; j < n_values; j++) {
-			const uint32 rb = reg_values[j];
+			const uint32_t rb = reg_values[j];
 			test_one(&code[0], insn, ra, rb, 0);
 			test_one(&code[2], insn, ra, rb, 0);
 		}
 	}
 }
 
-void powerpc_test_cpu::test_instruction_RRRSH(const char *insn, uint32 opcode)
+void powerpc_test_cpu::test_instruction_RRRSH(const char *insn, uint32_t opcode)
 {
 	// Test code
-	static uint32 code[] = {
+	static uint32_t code[] = {
 		POWERPC_ILLEGAL, POWERPC_BLR,
 		POWERPC_MR(0, RA), POWERPC_ILLEGAL, POWERPC_BLR
 	};
@@ -1199,19 +1221,19 @@ void powerpc_test_cpu::test_instruction_RRRSH(const char *insn, uint32 opcode)
 	flush_icache_range(code, sizeof(code));
 
 	for (int i = 0; i < n_values; i++) {
-		const uint32 ra = reg_values[i];
+		const uint32_t ra = reg_values[i];
 		for (int j = 0; j <= 64; j++) {
-			const uint32 rb = j;
+			const uint32_t rb = j;
 			test_one(&code[0], insn, ra, rb, 0);
 			test_one(&code[2], insn, ra, rb, 0);
 		}
 	}
 }
 
-void powerpc_test_cpu::test_instruction_RRIII(const char *insn, uint32 opcode)
+void powerpc_test_cpu::test_instruction_RRIII(const char *insn, uint32_t opcode)
 {
 	// Test code
-	static uint32 code[] = {
+	static uint32_t code[] = {
 		POWERPC_ILLEGAL, POWERPC_BLR,
 		POWERPC_MR(0, RA), POWERPC_ILLEGAL, POWERPC_BLR
 	};
@@ -1222,9 +1244,9 @@ void powerpc_test_cpu::test_instruction_RRIII(const char *insn, uint32 opcode)
 
 	for (int sh = 0; sh < 32; sh++) {
 		for (int i_mb = 0; i_mb < n_msk_values; i_mb++) {
-			const uint32 mb = msk_values[i_mb];
+			const uint32_t mb = msk_values[i_mb];
 			for (int i_me = 0; i_me < n_msk_values; i_me++) {
-				const uint32 me = msk_values[i_me];
+				const uint32_t me = msk_values[i_me];
 				SH_field::insert(opcode, sh);
 				MB_field::insert(opcode, mb);
 				ME_field::insert(opcode, me);
@@ -1233,7 +1255,7 @@ void powerpc_test_cpu::test_instruction_RRIII(const char *insn, uint32 opcode)
 				rA_field::insert(code[3], 0);
 				flush_icache_range(code, sizeof(code));
 				for (int i = 0; i < n_reg_values; i++) {
-					const uint32 ra = reg_values[i];
+					const uint32_t ra = reg_values[i];
 					test_one(&code[0], insn, ra, sh, 0, 0);
 					test_one(&code[2], insn, ra, sh, 0, 0);
 				}
@@ -1242,10 +1264,10 @@ void powerpc_test_cpu::test_instruction_RRIII(const char *insn, uint32 opcode)
 	}
 }
 
-void powerpc_test_cpu::test_instruction_RRRII(const char *insn, uint32 opcode)
+void powerpc_test_cpu::test_instruction_RRRII(const char *insn, uint32_t opcode)
 {
 	// Test code
-	static uint32 code[] = {
+	static uint32_t code[] = {
 		POWERPC_ILLEGAL, POWERPC_BLR,
 		POWERPC_MR(0, RA), POWERPC_ILLEGAL, POWERPC_BLR
 	};
@@ -1255,9 +1277,9 @@ void powerpc_test_cpu::test_instruction_RRRII(const char *insn, uint32 opcode)
 	const int n_msk_values = sizeof(msk_values)/sizeof(msk_values[0]);
 
 	for (int i_mb = 0; i_mb < n_msk_values; i_mb++) {
-		const uint32 mb = msk_values[i_mb];
+		const uint32_t mb = msk_values[i_mb];
 		for (int i_me = 0; i_me < n_msk_values; i_me++) {
-			const uint32 me = msk_values[i_me];
+			const uint32_t me = msk_values[i_me];
 			MB_field::insert(opcode, mb);
 			ME_field::insert(opcode, me);
 			code[0] = opcode;
@@ -1265,9 +1287,9 @@ void powerpc_test_cpu::test_instruction_RRRII(const char *insn, uint32 opcode)
 			rA_field::insert(code[3], 0);
 			flush_icache_range(code, sizeof(code));
 			for (int i = 0; i < n_reg_values; i++) {
-				const uint32 ra = reg_values[i];
+				const uint32_t ra = reg_values[i];
 				for (int j = -1; j <= 33; j++) {
-					const uint32 rb = j;
+					const uint32_t rb = j;
 					test_one(&code[0], insn, ra, rb, 0, 0);
 					test_one(&code[2], insn, ra, rb, 0, 0);
 				}
@@ -1276,10 +1298,10 @@ void powerpc_test_cpu::test_instruction_RRRII(const char *insn, uint32 opcode)
 	}
 }
 
-void powerpc_test_cpu::test_instruction_CRR__(const char *insn, uint32 opcode)
+void powerpc_test_cpu::test_instruction_CRR__(const char *insn, uint32_t opcode)
 {
 	// Test code
-	static uint32 code[] = {
+	static uint32_t code[] = {
 		POWERPC_ILLEGAL, POWERPC_BLR,
 		POWERPC_MR(0, RA), POWERPC_ILLEGAL, POWERPC_BLR
 	};
@@ -1293,9 +1315,9 @@ void powerpc_test_cpu::test_instruction_CRR__(const char *insn, uint32 opcode)
 		rA_field::insert(code[3], 0);		// <op> crfD,R0,RB
 		flush_icache_range(code, sizeof(code));
 		for (int i = 0; i < n_values; i++) {
-			const uint32 ra = reg_values[i];
+			const uint32_t ra = reg_values[i];
 			for (int j = 0; j < n_values; j++) {
-			const uint32 rb = reg_values[j];
+			const uint32_t rb = reg_values[j];
 			test_one(&code[0], insn, ra, rb, 0);
 			test_one(&code[2], insn, ra, rb, 0);
 			}
@@ -1303,10 +1325,10 @@ void powerpc_test_cpu::test_instruction_CRR__(const char *insn, uint32 opcode)
 	}
 }
 
-void powerpc_test_cpu::test_instruction_CRI__(const char *insn, uint32 opcode)
+void powerpc_test_cpu::test_instruction_CRI__(const char *insn, uint32_t opcode)
 {
 	// Test code
-	static uint32 code[] = {
+	static uint32_t code[] = {
 		POWERPC_ILLEGAL, POWERPC_BLR,
 		POWERPC_MR(0, RA), POWERPC_ILLEGAL, POWERPC_BLR
 	};
@@ -1318,13 +1340,13 @@ void powerpc_test_cpu::test_instruction_CRI__(const char *insn, uint32 opcode)
 	for (int k = 0; k < 8; k++) {
 		crfD_field::insert(opcode, k);
 		for (int j = 0; j < n_imm_values; j++) {
-			const uint32 im = imm_values[j];
+			const uint32_t im = imm_values[j];
 			UIMM_field::insert(opcode, im);
 			code[0] = code[3] = opcode;			// <op> crfD,RA,SIMM
 			rA_field::insert(code[3], 0);		// <op> crfD,R0,SIMM
 			flush_icache_range(code, sizeof(code));
 			for (int i = 0; i < n_reg_values; i++) {
-				const uint32 ra = reg_values[i];
+				const uint32_t ra = reg_values[i];
 				test_one(&code[0], insn, ra, im, 0);
 				test_one(&code[2], insn, ra, im, 0);
 			}
@@ -1332,14 +1354,14 @@ void powerpc_test_cpu::test_instruction_CRI__(const char *insn, uint32 opcode)
 	}
 }
 
-void powerpc_test_cpu::test_instruction_CCC__(const char *insn, uint32 opcode)
+void powerpc_test_cpu::test_instruction_CCC__(const char *insn, uint32_t opcode)
 {
 	// Test code
-	static uint32 code[] = {
+	static uint32_t code[] = {
 		POWERPC_ILLEGAL, POWERPC_MFCR(RD), POWERPC_BLR,
 	};
 
-	const uint32 saved_cr = init_cr;
+	const uint32_t saved_cr = init_cr;
 	crbD_field::insert(opcode, 0);
 
 	// Loop over crbA=[4-7] (crf1), crbB=[28-31] (crf7)
@@ -1350,7 +1372,7 @@ void powerpc_test_cpu::test_instruction_CCC__(const char *insn, uint32 opcode)
 			code[0] = opcode;
 			flush_icache_range(code, sizeof(code));
 			// Generate CR values for (crf1, crf7)
-			uint32 cr = 0;
+			uint32_t cr = 0;
 			for (int i = 0; i < 16; i++) {
 				CR_field<1>::insert(cr, i);
 				for (int j = 0; j < 16; j++) {
@@ -1618,7 +1640,7 @@ const powerpc_test_cpu::vector_value_t powerpc_test_cpu::vector_fp_values[] = {
 	{'f',{0x40,0x00,0x00,0x00,0x3f,0x80,0x00,0x00,0xbf,0x80,0x00,0x00,0xc0,0x00,0x00,0x00}}  // 2, 1, -1, -2
 };
 
-void powerpc_test_cpu::test_one_vector(uint32 *code, vector_test_t const & vt, uint8 *rAp, uint8 *rBp, uint8 *rCp)
+void powerpc_test_cpu::test_one_vector(uint32_t *code, vector_test_t const & vt, uint8_t *rAp, uint8_t *rBp, uint8_t *rCp)
 {
 #if TEST_VMX_OPS
 	static vector_t native_vD;
@@ -1627,19 +1649,19 @@ void powerpc_test_cpu::test_one_vector(uint32 *code, vector_test_t const & vt, u
 	memset(&native_vSCR, 0, sizeof(native_vSCR));
 	static aligned_vector_t dummy_vector;
 	dummy_vector.clear();
-	if (!rAp) rAp = (uint8 *)dummy_vector.addr();
-	if (!rBp) rBp = (uint8 *)dummy_vector.addr();
-	if (!rCp) rCp = (uint8 *)dummy_vector.addr();
+	if (!rAp) rAp = (uint8_t *)dummy_vector.addr();
+	if (!rBp) rBp = (uint8_t *)dummy_vector.addr();
+	if (!rCp) rCp = (uint8_t *)dummy_vector.addr();
 #ifdef NATIVE_POWERPC
 	// Invoke native code
-	const uint32 save_cr = native_get_cr();
+	const uint32_t save_cr = native_get_cr();
 	native_set_cr(init_cr);
 	native_vSCR.w[3] = 0;
-	typedef void (*func_t)(uint8 *, uint8 *, uint8 *, uint8 *, uint8 *);
+	typedef void (*func_t)(uint8_t *, uint8_t *, uint8_t *, uint8_t *, uint8_t *);
 	func_t func = (func_t)code;
-	func((uint8 *)&native_vD, rAp, rBp, rCp, native_vSCR.b);
-	const uint32 native_cr = native_get_cr();
-	const uint32 native_vscr = native_vSCR.w[3];
+	func((uint8_t *)&native_vD, rAp, rBp, rCp, native_vSCR.b);
+	const uint32_t native_cr = native_get_cr();
+	const uint32_t native_vscr = native_vSCR.w[3];
 	native_set_cr(save_cr);
 	if (results_file) {
 		put_vector(native_vD);
@@ -1648,8 +1670,8 @@ void powerpc_test_cpu::test_one_vector(uint32 *code, vector_test_t const & vt, u
 	}
 #else
 	get_vector(native_vD);
-	const uint32 native_cr = get32();
-	const uint32 native_vscr = get32();
+	const uint32_t native_cr = get32();
+	const uint32_t native_vscr = get32();
 #endif
 
 	if (SKIP_VMX_OPS)
@@ -1661,16 +1683,16 @@ void powerpc_test_cpu::test_one_vector(uint32 *code, vector_test_t const & vt, u
 	static aligned_vector_t emul_vSCR;
 	emul_vSCR.clear();
 	emul_set_cr(init_cr);
-	set_gpr(RD, (uintptr)emul_vD.addr());
-	set_gpr(RA, (uintptr)rAp);
-	set_gpr(RB, (uintptr)rBp);
-	set_gpr(RC, (uintptr)rCp);
-	set_gpr(VSCR, (uintptr)emul_vSCR.addr());
+	set_gpr(RD, (uintptr_t)emul_vD.addr());
+	set_gpr(RA, (uintptr_t)rAp);
+	set_gpr(RB, (uintptr_t)rBp);
+	set_gpr(RC, (uintptr_t)rCp);
+	set_gpr(VSCR, (uintptr_t)emul_vSCR.addr());
 	execute(code);
 	vector_helper_t emul_vSCR_helper;
 	memcpy(&emul_vSCR_helper, emul_vSCR.addr(), sizeof(vector_t));
-	const uint32 emul_cr = emul_get_cr();
-	const uint32 emul_vscr = ntohl(emul_vSCR_helper.w[3]);
+	const uint32_t emul_cr = emul_get_cr();
+	const uint32_t emul_vscr = ntohl(emul_vSCR_helper.w[3]);
 
 	++tests;
 
@@ -1688,7 +1710,7 @@ void powerpc_test_cpu::test_one_vector(uint32 *code, vector_test_t const & vt, u
 
 	if (!ok || verbose) {
 #if ENABLE_MON
-		disass_ppc(stdout, (uintptr)code, vt.opcode);
+		disass_ppc(stdout, (uintptr_t)code, vt.opcode);
 #endif
 		char op_type = tolower(vt.op_type);
 		if (!op_type)
@@ -1708,8 +1730,8 @@ void powerpc_test_cpu::test_one_vector(uint32 *code, vector_test_t const & vt, u
 			printf(#rX " = %08x", rX##p);							\
 			if (rX##p) switch (op_type) {							\
 			case 'b': printf(" [%02x]", *rX##p); break;				\
-			case 'h': printf(" [%04x]", *((uint16 *)rX##p)); break;	\
-			case 'w': printf(" [%08x]", *((uint32 *)rX##p)); break;	\
+			case 'h': printf(" [%04x]", *((uint16_t *)rX##p)); break;	\
+			case 'w': printf(" [%08x]", *((uint32_t *)rX##p)); break;	\
 			}														\
 			printf("\n");											\
 			break;													\
@@ -1740,7 +1762,7 @@ void powerpc_test_cpu::test_vector_load_for_shift(void)
 	};
 
 	// Code template
-	static uint32 code[] = {
+	static uint32_t code[] = {
 		POWERPC_MFSPR(12, 256),			// mfvrsave r12
 		_D(15,0,0,0x1000),				// lis r0,0x1000 ([v3])
 		POWERPC_MTSPR(0, 256),			// mtvrsave r0
@@ -1773,7 +1795,7 @@ void powerpc_test_cpu::test_vector_load_for_shift(void)
 		for (int j = 0; j < 32; j++) {
 			UIMM_field::insert(code[i_opcode - 1], j);
 			flush_icache_range(code, sizeof(code));
-			test_one_vector(code, vt, (uint8 *)NULL);
+			test_one_vector(code, vt, (uint8_t *)NULL);
 		}
 	}
 #endif
@@ -1790,7 +1812,7 @@ void powerpc_test_cpu::test_vector_load(void)
 	};
 
 	// Code template
-	static uint32 code[] = {
+	static uint32_t code[] = {
 		POWERPC_MFSPR(12, 256),			// mfvrsave r12
 		_D(15,0,0,0x1000),				// lis r0,0x1000 ([v3])
 		POWERPC_MTSPR(0, 256),			// mtvrsave r0
@@ -1827,19 +1849,19 @@ void powerpc_test_cpu::test_vector_load(void)
 			switch (vt.type) {
 			case 'b':
 				for (int k = 0; k < 16; k++) {
-					av.copy(*(vector_t *)((uint8 *)(&vector_values[j].v) + 1 * k), 16 - 1 * k);
+					av.copy(*(vector_t *)((uint8_t *)(&vector_values[j].v) + 1 * k), 16 - 1 * k);
 					test_one_vector(code, vt, av.addr());
 				}
 				break;
 			case 'h':
 				for (int k = 0; k < 8; k++) {
-					av.copy(*(vector_t *)((uint8 *)(&vector_values[j].v) + 2 * k), 16 - 2 * k);
+					av.copy(*(vector_t *)((uint8_t *)(&vector_values[j].v) + 2 * k), 16 - 2 * k);
 					test_one_vector(code, vt, av.addr());
 				}
 				break;
 			case 'w':
 				for (int k = 0; k < 4; k++) {
-					av.copy(*(vector_t *)((uint8 *)(&vector_values[j].v) + 4 * k), 16 - 4 * k);
+					av.copy(*(vector_t *)((uint8_t *)(&vector_values[j].v) + 4 * k), 16 - 4 * k);
 					test_one_vector(code, vt, av.addr());
 				}
 				break;
@@ -2012,7 +2034,7 @@ void powerpc_test_cpu::test_vector_arith(void)
 	};
 
 	// Code template
-	static uint32 code[] = {
+	static uint32_t code[] = {
 		POWERPC_MFSPR(12, 256),			// mfvrsave	r12
 		_D(15,0,0,0x9e00),				// lis		r0,0x9e00 ([v0;v3-v6])
 		POWERPC_MTSPR(0, 256),			// mtvrsave	r0
