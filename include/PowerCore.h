@@ -34,7 +34,7 @@ public:
     bool OV = false;
     bool CA = false;
     
-    void *memory_bases[4];
+    void *memoryBases[4];
 
     void interpret1();
 
@@ -61,7 +61,7 @@ protected:
 
 inline void *PowerCore::translateAddress(uint32_t addr)
 {
-    return ((char*)memory_bases[addr >> 30]) + addr;
+    return ((char*)memoryBases[addr >> 30]) + addr;
 }
 
 inline void PowerCore::setcr(int field, uint32_t x)
