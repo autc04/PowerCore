@@ -191,7 +191,6 @@ public:
     InstructionInfo(InputParser& in);
 
     void generateElseIf(std::ostream& out);
-    void generateSeparateFunc(std::ostream& out);
 };
 
 InstructionInfo::InstructionInfo(InputParser& in)
@@ -254,19 +253,6 @@ void InstructionInfo::generateElseIf(std::ostream& out)
     out << "}\n";
 }
 
-void InstructionInfo::generateSeparateFunc(std::ostream& out)
-{
-    out << "struct insn_" << name << " : PowerCore { void exec(uint32_t insn); };\n";
-    out << "void insn_" << name << "::exec(uint32_t insn)\n";
-    out << "{\n";
-    for(auto f : fields)
-        f.generateDecl(out);
-    out << "\n";
-    out << "#line " << std::dec << lineno << " \"powerpc.ppcdef\"\n";
-    out << code;
-    out << "}\n";
-}
-
 int main(int argc, char *argv[])
 {
     if(argc != 2)
@@ -284,10 +270,6 @@ int main(int argc, char *argv[])
     {
         insn.generateElseIf(std::cout);
     }
-
-    /*std::cout << "#include \"PowerCore.h\"\n";
-    for(auto insn : insns)
-        insn.generateSeparateFunc(std::cout);*/
 
     return 0;
 }
