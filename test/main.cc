@@ -21,8 +21,8 @@ int main()
 
     PowerCore core;
 
-    core.memory_bases[0] = code.data();
-    core.memory_bases[1] = stack.data() - 0x40000000;
+    core.memoryBases[0] = code.data();
+    core.memoryBases[1] = stack.data() - 0x40000000;
     core.r[1] = 0x40000000 + 1024 * 1024 - 1024;
 
     for(int i = 0; i < 15; i++)
