@@ -110,7 +110,7 @@ void PowerCore::store(uint32_t addr, T value)
     *(T*) translateAddress(addr) = swap(value);
 }
 
-bool PowerCore::conditional(uint32_t BO, uint32_t BI)
+inline bool PowerCore::conditional(uint32_t BO, uint32_t BI)
 {
     bool ctr_ok;
     if((BO & 0x4) == 0)
