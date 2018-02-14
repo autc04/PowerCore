@@ -22,7 +22,7 @@ public:
     uint32_t getXER() const;
     void setXER(uint32_t xer);
 
-protected:
+private:
     void setcr(int field, uint32_t x);
     uint32_t getcr(int field) const;
     void record(int field, int32_t val);
