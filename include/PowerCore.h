@@ -1,22 +1,5 @@
 #include <stdint.h>
 
-#ifdef _MSC_VER
-#include <stdlib.h>
-
-inline uint16_t swap16(uint16_t v) { return _byteswap_ushort(v); }
-inline uint32_t swap32(uint32_t v) { return _byteswap_ulong(v); }
-#else
-inline uint16_t swap16(uint16_t v) { return __builtin_bswap16(v); }
-inline uint32_t swap32(uint32_t v) { return __builtin_bswap32(v); }
-#endif
-
-inline uint8_t swap(uint8_t v) { return v; }
-inline int8_t swap(int8_t v) { return v; }
-inline uint16_t swap(uint16_t v) { return swap16(v); }
-inline int16_t swap(int16_t v) { return swap16(v); }
-inline uint32_t swap(uint32_t v) { return swap32(v); }
-inline int32_t swap(int32_t v) { return swap32(v); }
-
 class PowerCore
 {
 public:

@@ -87,7 +87,7 @@ std::string InputParser::getBlock()
         ++lineno;
         std::getline(stream, str);
 
-        if(!empty(str) && !std::isspace(str[0]) && str.substr(0,2) != "//")
+        if(!str.empty() && !std::isspace(str[0]) && str.substr(0,2) != "//")
             break;
 
         out << str << std::endl;
