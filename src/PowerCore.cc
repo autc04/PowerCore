@@ -5,6 +5,10 @@
 
 #if defined(powerpc) || defined(__ppc__)
 #define BIGENDIAN
+#elif defined(i386) \
+     || defined(__x86_64) || defined(__x86_64__) \
+     || defined (_M_X64) || defined(_M_IX86)
+#define LITTLEENDIAN
 #else
 #error "Unknown CPU type"
 #endif
@@ -83,13 +87,21 @@ inline bool PowerCore::crbit(int bit) const
 template<typename T>
 T PowerCore::load(uint32_t addr)
 {
+#ifdef LITTLEENDIAN
     return swap(*(T*) translateAddress(addr));
+#else
+    return *(T*) translateAddress(addr);
+#endif
 }
 
 template<typename T>
 void PowerCore::store(uint32_t addr, T value)
 {
+#ifdef LITTLEENDIAN
     *(T*) translateAddress(addr) = swap(value);
+#else
+    *(T*) translateAddress(addr) = value;
+#endif
 }
 
 inline bool PowerCore::conditional(uint32_t BO, uint32_t BI)
