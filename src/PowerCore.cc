@@ -52,7 +52,7 @@ inline void *PowerCore::translateAddress(uint32_t addr) const
 
 inline void PowerCore::setcr(int field, uint32_t x)
 {
-    cr = (cr & (~0xF << (7-field)*4)) | (x << (7-field)*4);
+    cr = (cr & ~(0xF << (7-field)*4)) | (x << (7-field)*4);
 }
 inline uint32_t PowerCore::getcr(int field) const
 {
