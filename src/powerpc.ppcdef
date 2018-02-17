@@ -241,7 +241,7 @@ cntlzw
 011111 RS RA 00000 0000011010 Rc
 0      6  11 16    21         31
 
-    uint32_t val = __builtin_clz(r[RS]);
+    uint32_t val = r[RS] ? __builtin_clz(r[RS]) : 32;
     r[RA] = val;
     if(Rc) record(0,val);
 
