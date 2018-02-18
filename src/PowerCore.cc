@@ -169,19 +169,32 @@ inline bool PowerCore::conditional(uint32_t BO, uint32_t BI)
     return ctr_ok && cond_ok;
 }
 
+#define //LOG_TRACE
+
 void PowerCore::interpret1()
 {
     uint32_t insn;
     while(CIA != 0xFFFFFFFC)
     {
-        //std::cerr << "instruction at " << std::hex << CIA
-         //   << ": " << std::flush;
+#ifdef LOG_TRACE
+        std::cerr << "instruction at " << std::hex << CIA
+           << ": " << std::flush;
+#endif
         insn = load<uint32_t>(CIA);
         
         uint32_t NIA = CIA + 4;
-        //std::cerr << std::hex << insn << std::endl;
-        //std::cout << "r3: " << std::dec << r[3] << std::endl;
-        //std::cout << "cr: " << std::hex << cr << std::endl;
+#ifdef LOG_TRACE
+        std::cerr << std::hex << insn << std::endl;
+        std::cerr << "r3: " << std::hex << r[3] << " ";
+        std::cerr << "r4: " << std::hex << r[4] << " ";
+        std::cerr << "r5: " << std::hex << r[5] << " ";
+        std::cerr << "r6: " << std::hex << r[6] << " ";
+        std::cerr << "r7: " << std::hex << r[7] << " ";
+        std::cerr << "r8: " << std::hex << r[8] << " ";
+        std::cerr << "r9: " << std::hex << r[9] << " ";
+        std::cerr << "r10: " << std::hex << r[10] << " ";
+        std::cerr << "cr: " << std::hex << cr << std::endl << std::flush;
+#endif
 
         if(false)
             ;
@@ -197,6 +210,6 @@ void PowerCore::unimplemented(const char* name)
 {
     uint32_t insn = load<uint32_t>(CIA);
     std::cerr << "Unimplemented instruction " << name << " at " << std::hex << CIA
-                << ": " << std::hex << insn << std::endl;
+                << ": " << std::hex << insn << std::endl << std::flush;
     exit(1);
 }
