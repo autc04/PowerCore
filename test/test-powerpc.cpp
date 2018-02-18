@@ -702,7 +702,9 @@ static bool vector_all_eq(char type, vector_t const & b)
 
 // Define PowerPC tester
 class powerpc_test_cpu
+#ifndef NO_EMU
 	: public powerpc_cpu_base
+#endif
 {
 #ifdef NATIVE_POWERPC
 	uint32_t native_get_xer() const
@@ -825,7 +827,7 @@ private:
 };
 
 powerpc_test_cpu::powerpc_test_cpu()
-	: powerpc_cpu_base(), results_file(NULL)
+	: results_file(NULL)
 {
 #if ENABLE_MON
 	mon_init();
@@ -900,12 +902,13 @@ void powerpc_test_cpu::execute(uint32_t *code_p)
 	code_p = &func[old_i];
 	old_i = i;
 #endif
-
+#ifndef NO_EMU
 	assert((uintptr_t)code_p <= 0xFFFFFFFFU);
 	set_lr((uintptr_t)code_p);
 
 	assert((uintptr_t)code <= 0xFFFFFFFFU);
 	powerpc_cpu_base::execute((uintptr_t)code);
+#endif
 }
 
 void powerpc_test_cpu::gen_xer_values(uint32_t use_mask, uint32_t set_mask)
@@ -995,7 +998,7 @@ void powerpc_test_cpu::test_one_1(uint32_t *code, const char *insn, uint32_t a1,
 	const uint32_t native_xer = get32();
 	const uint32_t native_cr = get32();
 #endif
-
+#ifndef NO_EMU
 	if (SKIP_ALU_OPS)
 		return;
 
@@ -1041,6 +1044,7 @@ void powerpc_test_cpu::test_one_1(uint32_t *code, const char *insn, uint32_t a1,
 		PRINT_OPERANDS(emul);
 #undef  PRINT_OPERANDS
 	}
+#endif
 }
 
 const uint32_t powerpc_test_cpu::reg_values[] = {
