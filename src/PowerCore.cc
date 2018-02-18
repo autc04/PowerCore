@@ -169,7 +169,7 @@ inline bool PowerCore::conditional(uint32_t BO, uint32_t BI)
     return ctr_ok && cond_ok;
 }
 
-#define //LOG_TRACE
+//#define LOG_TRACE
 
 void PowerCore::interpret1()
 {

@@ -15,9 +15,10 @@ addc
 011111 RT RA RB OE 000001010 Rc
 0      6  11 16 21 22        31
 
-    int64_t val = (int64_t)(int32_t)r[RA] + (int64_t)(int32_t)r[RB];
+    int64_t sval = (int64_t)(int32_t)r[RA] + (int64_t)(int32_t)r[RB];
+    uint64_t val = (uint64_t)r[RA] + (uint64_t)r[RB];
     r[RT] = val;
-    if(OE) overflow(val);
+    if(OE) overflow(sval);
     if(Rc) record(0,val);
     CA = (val >> 32) & 1;
   
@@ -28,9 +29,10 @@ adde
 011111 RT RA RB OE 010001010 Rc
 0      6  11 16 21 22        31
 
-    int64_t val = (int64_t)(int32_t)r[RA] + (int64_t)(int32_t)r[RB] + (CA ? 1 : 0);
+    int64_t sval = (int64_t)(int32_t)r[RA] + (int64_t)(int32_t)r[RB] + (CA ? 1 : 0);
+    uint64_t val = (uint64_t)r[RA] + (uint64_t)r[RB] + (CA ? 1 : 0);;
     r[RT] = val;
-    if(OE) overflow(val);
+    if(OE) overflow(sval);
     if(Rc) record(0,val);
     CA = (val >> 32) & 1;
 
@@ -56,7 +58,8 @@ addic
 00110 Rc RT RA SI
 0     5  6  11 16
 
-    int64_t val = (int64_t)(int32_t)(RA ? r[RA] : 0) + (int16_t)SI;
+    uint64_t val = (uint64_t)r[RA] + (uint32_t)(int16_t)SI;
+    r[RT] = val;
     if(Rc) record(0,val);
     CA = (val >> 32) & 1;
 
@@ -67,9 +70,10 @@ addme
 011111 RT RA 00000 OE 011101010 Rc
 0      6  11 16    21 22        31
 
-    int64_t val = (int64_t)(int32_t)r[RA] + (int64_t)-1 + (CA ? 1 : 0);
+    int64_t sval = (int64_t)(int32_t)r[RA] + (int64_t)-1 + (CA ? 1 : 0);
+    uint64_t val = (uint64_t)r[RA] + 0xFFFFFFFFU + (CA ? 1 : 0);
     r[RT] = val;
-    if(OE) overflow(val);
+    if(OE) overflow(sval);
     if(Rc) record(0,val);
     CA = (val >> 32) & 1;
   
@@ -87,9 +91,10 @@ addze
 011111 RT RA 00000 OE 011001010 Rc
 0      6  11 16    21 22        31
 
-    int64_t val = (int64_t)(int32_t)r[RA] + (CA ? 1 : 0);
+    int64_t sval = (int64_t)(int32_t)r[RA] + (CA ? 1 : 0);
+    uint64_t val = (uint64_t)r[RA] + (CA ? 1 : 0);
     r[RT] = val;
-    if(OE) overflow(val);
+    if(OE) overflow(sval);
     if(Rc) record(0,val);
     CA = (val >> 32) & 1;
   
@@ -124,6 +129,7 @@ andi
 
     uint32_t val = r[RS] & (UI << (S ? 16 : 0));
     r[RA] = val;
+    record(0, val);
 
 ===
 
@@ -182,9 +188,9 @@ bclr
 010011 BO BI 00000 0000010000 LK
 0      6  11 16    21         31
 
-    if(LK) lr = NIA;
     if(conditional(BO, BI))
         NIA = lr & ~3;
+    if(LK) lr = CIA+4;
 
 ===
 bclre
@@ -385,15 +391,21 @@ divw
 011111 RT RA RB OE 111101011 Rc
 0      6  11 16 21 22        31
 
-    int32_t val = (int32_t)r[RA] / (int32_t)r[RB];
-    r[RT] = val;
-    if(OE)
+    if((r[RA] == 0x80000000 && r[RB] == 0xFFFFFFFF)
+            || r[RB] == 0)
     {
-        OV = (r[RA] == 0x80000000 && r[RB] == 0xFFFFFFFF)
-            || r[RB] == 0;
-        SO = SO || OV;
+        if(OE)
+            SO = OV = true;
+        if(Rc) record(0, 0);
     }
-    if(Rc) record(0, val);
+    else
+    {
+        if(OE)
+            OV = false;
+        int32_t val = (int32_t)r[RA] / (int32_t)r[RB];
+        r[RT] = val;
+        if(Rc) record(0, val);
+    }
 
 ===
 divwu
@@ -401,14 +413,21 @@ divwu
 011111 RT RA RB OE 111001011 Rc
 0      6  11 16 21 22        31
 
-    int32_t val = r[RA] / r[RB];
-    r[RT] = val;
-    if(OE)
+    if(r[RB] == 0)
     {
-        OV = r[RB] == 0;
-        SO = SO || OV;
+        if(OE)
+            SO = OV = true;
+        if(Rc) record(0, 0);
     }
-    if(Rc) record(0, val);
+    else
+    {
+        if(OE)
+            OV = false;
+        uint32_t val = r[RA] / r[RB];
+        r[RT] = val;
+        if(Rc) record(0, val);
+    }
+
 ===
 eqv
 
@@ -1053,8 +1072,8 @@ mullw
     int64_t prod = (int64_t)(int32_t)r[RA] * (int64_t)(int32_t)r[RB];
     if(OE)
     {
-        OV = (prod & 0xFFFFFFFF00000000) != 0
-          && (prod & 0xFFFFFFFF00000000) != 0xFFFFFFFF00000000;
+        OV = (prod & 0xFFFFFFFF80000000) != 0
+          && (prod & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000;
         SO = SO || OV;
     }
     if(Rc) record(0,prod);
@@ -1272,20 +1291,19 @@ sraw
     int32_t s = r[RS];
     if(n & 0x20)
     {
+        CA = s < 0;
         if(s < 0)
         {
             result = 0xFFFFFFFF;
-            CA = true;
         }
         else
         {
             result = 0;
-            CA = false;
         }
     }
     else
     {
-        CA = n != 0 && s < 0;
+        CA = (s < 0) && (((1 << n) - 1) & s) != 0;
         result = s >> (int32_t)n;
     }
 
@@ -1562,9 +1580,10 @@ subfc
 011111 RT RA RB OE 000001000 Rc
 0      6  11 16 21 22        31
 
-    int64_t val = (int64_t)(int32_t)~r[RA] + (int64_t)(int32_t)r[RB] + 1;
+    int64_t sval = (int64_t)(int32_t)~r[RA] + (int64_t)(int32_t)r[RB] + 1;
+    uint64_t val = (uint64_t)~r[RA] + (uint64_t)r[RB] + 1;
     r[RT] = val;
-    if(OE) overflow(val);
+    if(OE) overflow(sval);
     if(Rc) record(0,val);
     CA = (val >> 32) & 1;
 
@@ -1575,11 +1594,13 @@ subfe
 011111 RT RA RB OE 010001000 Rc
 0      6  11 16 21 22        31
 
-    int64_t val = (int64_t)(int32_t)~r[RA] + (int64_t)(int32_t)r[RB] + (CA ? 1 : 0);
+    int64_t sval = (int64_t)(int32_t)~r[RA] + (int64_t)(int32_t)r[RB] + (CA ? 1 : 0);
+    uint64_t val = (uint64_t)~r[RA] + (uint64_t)r[RB] + (CA ? 1 : 0);
     r[RT] = val;
-    if(OE) overflow(val);
+    if(OE) overflow(sval);
     if(Rc) record(0,val);
     CA = (val >> 32) & 1;
+
 ===
 
 subfe64
@@ -1594,8 +1615,9 @@ subfic
 001000 RT RA SI
 0      6  11 16
 
-    int64_t val = (int64_t)(int32_t)~r[RA] + (int16_t)SI + 1;
+    uint64_t val = (uint64_t)~r[RA] + (uint32_t)(int16_t)SI + 1;
     CA = (val >> 32) & 1;
+    r[RT] = val;
 
 ===
 
@@ -1604,9 +1626,10 @@ subfme
 011111 RT RA 00000 OE 011101000 Rc
 0      6  11 16    21 22        31
 
-    int64_t val = (int64_t)(int32_t)~r[RA] + (int64_t)-1 + (CA ? 1 : 0);
+    int64_t sval = (int64_t)(int32_t)~r[RA] + (int64_t)-1 + (CA ? 1 : 0);
+    uint64_t val = (uint64_t)~r[RA] + 0xFFFFFFFFU + (CA ? 1 : 0);
     r[RT] = val;
-    if(OE) overflow(val);
+    if(OE) overflow(sval);
     if(Rc) record(0,val);
     CA = (val >> 32) & 1;
 
@@ -1621,12 +1644,13 @@ subfme64
 
 subfze
 
-011111 RT RA 00000 OE 011001010 Rc
+011111 RT RA 00000 OE 011001000 Rc
 0      6  11 16    21 22        31
 
-    int64_t val = (int64_t)(int32_t)~r[RA] + (CA ? 1 : 0);
+    int64_t sval = (int64_t)(int32_t)~r[RA] + (CA ? 1 : 0);
+    uint64_t val = (uint64_t)~r[RA] + (CA ? 1 : 0);
     r[RT] = val;
-    if(OE) overflow(val);
+    if(OE) overflow(sval);
     if(Rc) record(0,val);
     CA = (val >> 32) & 1;
 
@@ -1714,5 +1738,14 @@ xori
 
     uint32_t val = r[RS] ^ (UI << (S ? 16 : 0));
     r[RA] = val;
+
+===
+
+emulop
+
+00011000000000000000000000000000
+0
+
+    return;
 
 ===
