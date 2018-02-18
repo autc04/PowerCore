@@ -1550,7 +1550,7 @@ subf
 011111 RT RA RB OE 000101000 Rc
 0      6  11 16 21 22        31
 
-    int64_t val = (int64_t)(int32_t)r[RA] + (int64_t)(int32_t)r[RB];
+    int64_t val = (int64_t)(int32_t)~r[RA] + (int64_t)(int32_t)r[RB] + 1;
     r[RT] = val;
     if(OE) overflow(val);
     if(Rc) record(0,val);
