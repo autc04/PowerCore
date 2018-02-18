@@ -1,6 +1,7 @@
 #include <PowerCore.h>
 #include <iostream>
 #include <cstring>
+#include <cmath>
 
 #if !defined(BIGENDIAN) & !defined(LITTLEENDIAN)
 
@@ -169,7 +170,12 @@ inline bool PowerCore::conditional(uint32_t BO, uint32_t BI)
     return ctr_ok && cond_ok;
 }
 
-//#define LOG_TRACE
+void PowerCore::frecord()
+{
+    // ###
+}
+
+#define LOG_TRACE
 
 void PowerCore::interpret1()
 {

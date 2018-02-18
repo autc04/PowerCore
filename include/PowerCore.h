@@ -32,6 +32,8 @@ private:
     void crbit(int bit, bool v);
     bool crbit(int bit) const;
 
+    void frecord();
+
     void * translateAddress(uint32_t addr) const;
 
     template<typename T>

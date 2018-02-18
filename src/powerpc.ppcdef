@@ -467,11 +467,21 @@ fabs
 
 111111 FRT 00000 FRB 0100001000 Rc
 0      6   11    16  21         31
+
+    f[FRT] = std::abs(f[FRB]);
+    if(Rc) frecord();
+
 ===
 fadd
 
 111 P 11 FRT FRA FRB 00000 10101 Rc
 0   3 4  6   11  16  21    26    31
+
+    f[FRT] = f[FRA] + f[FRB];
+    if(!P)
+        f[FRT] = float(f[FRT]);
+    if(Rc) frecord();
+
 ===
 fcfid
 
@@ -482,21 +492,50 @@ fcmp
 
 111111 BF 00 FRA FRB 0000 U  00000 0
 0      6  9  11  16  21   25 26    31
+
+    uint32_t cc;
+    if(std::isnan(f[FRA]) || std::isnan(f[FRB]))
+        cc = 1;
+    else if(f[FRA] < f[FRB])
+        cc = 8;
+    else if(f[FRA] > f[FRB])
+        cc = 4;
+    else
+        cc = 2;
+    setcr(1,cc);
+    // ###
+
 ===
 fctid
 
 111111 FRT 00000 FRB 110010111 Z  0
 0      6   11    16  21        30 31
+
+    int64_t w = f[FRB];
+    static_assert(sizeof(f[FRT]) == 8, "unexpected fpr size");
+    std::memcpy(&f[FRT], &w, 8);
+
 ===
 fctiw
 
 111111 FRT 00000 FRB 000000111 Z  Rc
 0      6   11    16  21        30 31
+
+    uint64_t w = (int32_t) f[FRB];
+    static_assert(sizeof(f[FRT]) == 8, "unexpected fpr size");
+    std::memcpy(&f[FRT], &w, 8);
+    if(Rc) frecord();
+
 ===
 fdiv
 
 111 P 11 FRT FRA FRB 00000 10010 Rc
 0   3 4  6   11  16  21    26    31
+
+    f[FRT] = f[FRA] / f[FRB];
+    if(!P)
+        f[FRT] = float(f[FRT]);
+    if(Rc) frecord();
 
 ===
 
@@ -521,6 +560,11 @@ fmsub
 fmul
 111 P 11 FRT FRA 00000 FRC 11001 Rc
 0   3 4  6   11  16    21  26    31
+
+    f[FRT] = f[FRA] * f[FRC];
+    if(!P)
+        f[FRT] = float(f[FRT]);
+    if(Rc) frecord();
 
 ===
 
@@ -581,6 +625,11 @@ fsqrt
 fsub
 111 P 11 FRT FRA FRB 00000 10100 Rc
 0   3 4  6   11  16  21    26    31
+
+    f[FRT] = f[FRA] - f[FRB];
+    if(!P)
+        f[FRT] = float(f[FRT]);
+    if(Rc) frecord();
 
 ===
 
@@ -664,6 +713,10 @@ lfd
 11001 U FRT RA D
 0     5 6   11 16
 
+    uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
+    f[FRT] = load<double>(ea);
+    if(U) r[RA] = ea;
+
 ===
 
 lfde
@@ -675,6 +728,10 @@ lfde
 lfdx
 011111 FRT RA RB 1001 U  10111 0
 0      6   11 16 21   25 26    31
+
+    uint32_t ea = (RA ? r[RA] : 0) + r[RB];
+    f[FRT] = load<double>(ea);
+    if(U) r[RA] = ea;
 
 ===
 
@@ -703,6 +760,10 @@ lfse
 lfsx
 011111 FRT RA RB 1000 U  10111 0
 0      6   11 16 21   25 26    31
+
+    uint32_t ea = (RA ? r[RA] : 0) + r[RB];
+    f[FRT] = load<float>(ea);
+    if(U) r[RA] = ea;
 
 ===
 
@@ -1402,6 +1463,11 @@ stfde
 stfdx
 011111 FRS RA RB 1011 U  10111 0
 0      6   11 16 21   25 26    31
+
+    uint32_t ea = (RA ? r[RA] : 0) + r[RB];
+    store<double>(ea, f[FRS]);
+    if(U) r[RA] = ea;
+
 ===
 stfdxe
 011111 FRS RA RB 1011 U  11111 0
@@ -1437,6 +1503,11 @@ stfse
 stfsx
 011111 FRS RA RB 1010 U  10111 0
 0      6   11 16 21   25 26    31
+
+    uint32_t ea = (RA ? r[RA] : 0) + r[RB];
+    store<float>(ea, f[FRS]);
+    if(U) r[RA] = ea;
+
 ===
 stfsxe
 011111 FRS RA RB 1010 U  11111 0
