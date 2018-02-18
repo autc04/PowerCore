@@ -1,5 +1,6 @@
 #include <PowerCore.h>
 #include <iostream>
+#include <cstring>
 
 #if !defined(BIGENDIAN) & !defined(LITTLEENDIAN)
 
@@ -23,6 +24,7 @@ inline uint32_t swap32(uint32_t v) { return _byteswap_ulong(v); }
 #else
 inline uint16_t swap16(uint16_t v) { return __builtin_bswap16(v); }
 inline uint32_t swap32(uint32_t v) { return __builtin_bswap32(v); }
+inline uint32_t swap64(uint32_t v) { return __builtin_bswap64(v); }
 #endif
 
 inline uint8_t swap(uint8_t v) { return v; }
@@ -31,6 +33,8 @@ inline uint16_t swap(uint16_t v) { return swap16(v); }
 inline int16_t swap(int16_t v) { return swap16(v); }
 inline uint32_t swap(uint32_t v) { return swap32(v); }
 inline int32_t swap(int32_t v) { return swap32(v); }
+inline uint64_t swap(uint64_t v) { return swap64(v); }
+inline int64_t swap(int64_t v) { return swap64(v); }
 
 
 void PowerCore::setXER(uint32_t XER)
@@ -94,6 +98,26 @@ T PowerCore::load(uint32_t addr)
 #endif
 }
 
+template<>
+float PowerCore::load<float>(uint32_t addr)
+{
+    uint32_t i = load<uint32_t>(addr);
+    float f;
+    static_assert(sizeof(float) == 4, "unexpected float size");
+    std::memcpy(&f, &i, 4);
+    return f;
+}
+
+template<>
+double PowerCore::load<double>(uint32_t addr)
+{
+    uint32_t i = load<uint64_t>(addr);
+    double d;
+    static_assert(sizeof(double) == 8, "unexpected double size");
+    std::memcpy(&d, &i, 8);
+    return d;
+}
+
 template<typename T>
 void PowerCore::store(uint32_t addr, T value)
 {
@@ -102,6 +126,24 @@ void PowerCore::store(uint32_t addr, T value)
 #else
     *(T*) translateAddress(addr) = value;
 #endif
+}
+
+template<>
+void PowerCore::store<float>(uint32_t addr, float value)
+{
+    uint32_t u;
+    static_assert(sizeof(float) == 4, "unexpected float size");
+    std::memcpy(&u, &value, 4);
+    store(addr, u);
+}
+
+template<>
+void PowerCore::store<double>(uint32_t addr, double value)
+{
+    uint64_t u;
+    static_assert(sizeof(double) == 8, "unexpected double size");
+    std::memcpy(&u, &value, 8);
+    store(addr, u);
 }
 
 inline bool PowerCore::conditional(uint32_t BO, uint32_t BI)
@@ -120,7 +162,7 @@ inline bool PowerCore::conditional(uint32_t BO, uint32_t BI)
     if(BO & 0x10)
         cond_ok = true;
     else if(BO & 0x8)
-        cond_ok = cr & (0x80000000U >> BI);
+        cond_ok = (cr & (0x80000000U >> BI)) != 0;
     else
         cond_ok = (cr & (0x80000000U >> BI)) == 0;
 

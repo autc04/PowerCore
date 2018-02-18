@@ -4,6 +4,7 @@ class PowerCore
 {
 public:
     uint32_t r[32] = { 0 };
+    double f[32] = { 0.0 };
     uint32_t cr = 0;
     uint32_t lr = 0;
     uint32_t ctr = 0;

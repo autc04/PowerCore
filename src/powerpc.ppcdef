@@ -669,6 +669,10 @@ lfs
 11000 U FRT RA D
 0     5 6   11 16
 
+    uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
+    f[FRT] = load<float>(ea);
+    if(U) r[RA] = ea;
+
 ===
 
 lfse
@@ -1367,6 +1371,10 @@ stfd
 11011 U FRS RA D
 0     5 6   11 16
 
+    uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
+    store<double>(ea, f[FRS]);
+    if(U) r[RA] = ea;
+
 ===
 stfde
 111110 FRS RA DES 111 U
@@ -1397,6 +1405,10 @@ stfiwxe
 stfs
 11010 U FRS RA D
 0     5 6   11 16
+
+    uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
+    store<float>(ea, f[FRS]);
+    if(U) r[RA] = ea;
 
 ===
 stfse
