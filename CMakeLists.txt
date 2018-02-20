@@ -6,12 +6,17 @@ add_executable(powergenerator generator/PowerGenerator.cc)
 
 
 add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/generated.interpret1.h
-    COMMAND powergenerator ${CMAKE_CURRENT_SOURCE_DIR}/src/powerpc.ppcdef > ${CMAKE_CURRENT_BINARY_DIR}/generated.interpret1.h
+    OUTPUT
+        ${CMAKE_CURRENT_BINARY_DIR}/generated.interpret1.h
+        ${CMAKE_CURRENT_BINARY_DIR}/generated.disass.h
+    COMMAND powergenerator ${CMAKE_CURRENT_SOURCE_DIR}/src/powerpc.ppcdef
     DEPENDS powergenerator src/powerpc.ppcdef
 )
 
-add_library(PowerCore src/PowerCore.cc ${CMAKE_CURRENT_BINARY_DIR}/generated.interpret1.h)
+add_library(PowerCore src/PowerCore.cc
+        ${CMAKE_CURRENT_BINARY_DIR}/generated.interpret1.h
+        ${CMAKE_CURRENT_BINARY_DIR}/generated.disass.h
+    )
 target_include_directories(PowerCore PUBLIC include)
 target_include_directories(PowerCore PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 

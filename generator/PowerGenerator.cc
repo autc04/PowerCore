@@ -118,14 +118,13 @@ public:
     bool empty() const { return first; }
 };
 
-class Field
+struct Field
 {
     int from, to;
     std::string name;
     uint32_t value;
     bool match;
 
-public:
     Field(int from, int to, std::string str);
 
     void generateCondition(SeparatedListHelper& out);
@@ -191,6 +190,8 @@ public:
     InstructionInfo(InputParser& in);
 
     void generateElseIf(std::ostream& out);
+    void generateInterpElseIf(std::ostream& out);
+    void generateDisassElseIf(std::ostream& out);
 };
 
 InstructionInfo::InstructionInfo(InputParser& in)
@@ -249,7 +250,31 @@ void InstructionInfo::generateElseIf(std::ostream& out)
         f.generateDecl(out);
     out << "\n";
     out << "#line " << std::dec << lineno << " \"" << definitionFile << "\"\n";
+}
+void InstructionInfo::generateInterpElseIf(std::ostream& out)
+{
+    generateElseIf(out);
     out << code;
+    out << "}\n";
+}
+
+void InstructionInfo::generateDisassElseIf(std::ostream& out)
+{
+    generateElseIf(out);
+    out << "std::clog << std::left << std::setfill(' ') << std::setw(10) << \"" << name << "\"";
+    bool first = true;
+    for(auto f : fields)
+    {
+        if(f.name.empty())
+            continue;
+        
+        if(first)
+            first = false;
+        else
+            out << " << \", \"";
+        out << " << std::dec << " << f.name;
+    }
+    out << " << std::endl;\n";
     out << "}\n";
 }
 
@@ -266,9 +291,15 @@ int main(int argc, char *argv[])
         insns.emplace_back(in);
     }
 
-    for(auto insn : insns)
     {
-        insn.generateElseIf(std::cout);
+        std::ofstream out("generated.interpret1.h");
+        for(auto insn : insns)
+            insn.generateInterpElseIf(out);
+    }
+    {
+        std::ofstream out("generated.disass.h");
+        for(auto insn : insns)
+            insn.generateDisassElseIf(out);
     }
 
     return 0;

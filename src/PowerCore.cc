@@ -1,5 +1,6 @@
 #include <PowerCore.h>
 #include <iostream>
+#include <iomanip>
 #include <cstring>
 #include <cmath>
 
@@ -175,7 +176,18 @@ void PowerCore::frecord()
     // ###
 }
 
-#define LOG_TRACE
+//#define LOG_TRACE
+
+static void disass1(uint32_t insn)
+{
+    if(false)
+        ;
+#include "generated.disass.h"
+    else
+        std::clog << std::left << std::setfill(' ') << std::setw(10) << "dc" << std::hex << insn << std::endl;
+
+}
+
 
 void PowerCore::interpret1()
 {
@@ -183,23 +195,27 @@ void PowerCore::interpret1()
     while(CIA != 0xFFFFFFFC)
     {
 #ifdef LOG_TRACE
-        std::cerr << "instruction at " << std::hex << CIA
+        std::clog.clear();
+        std::clog << "instruction at " << std::hex << CIA
            << ": " << std::flush;
 #endif
         insn = load<uint32_t>(CIA);
         
         uint32_t NIA = CIA + 4;
 #ifdef LOG_TRACE
-        std::cerr << std::hex << insn << std::endl;
-        std::cerr << "r3: " << std::hex << r[3] << " ";
-        std::cerr << "r4: " << std::hex << r[4] << " ";
-        std::cerr << "r5: " << std::hex << r[5] << " ";
-        std::cerr << "r6: " << std::hex << r[6] << " ";
-        std::cerr << "r7: " << std::hex << r[7] << " ";
-        std::cerr << "r8: " << std::hex << r[8] << " ";
-        std::cerr << "r9: " << std::hex << r[9] << " ";
-        std::cerr << "r10: " << std::hex << r[10] << " ";
-        std::cerr << "cr: " << std::hex << cr << std::endl << std::flush;
+        std::clog << std::hex << insn << std::endl;
+        std::clog << "    ";
+        disass1(insn);
+
+        std::clog << "r3: " << std::hex << r[3] << " ";
+        std::clog << "r4: " << std::hex << r[4] << " ";
+        std::clog << "r5: " << std::hex << r[5] << " ";
+        std::clog << "r6: " << std::hex << r[6] << " ";
+        std::clog << "r7: " << std::hex << r[7] << " ";
+        std::clog << "r8: " << std::hex << r[8] << " ";
+        std::clog << "r9: " << std::hex << r[9] << " ";
+        std::clog << "r10: " << std::hex << r[10] << " ";
+        std::clog << "cr: " << std::hex << cr << std::endl << std::flush;
 #endif
 
         if(false)
