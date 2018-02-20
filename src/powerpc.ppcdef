@@ -543,17 +543,30 @@ fmadd
 111 P 11 FRT FRA FRB FRC 11101 Rc
 0   3 4  6   11  16  21  26    31
 
+    f[FRT] = f[FRA] * f[FRC] + f[FRB];
+    if(!P)
+        f[FRT] = float(f[FRT]);
+    if(Rc) frecord();
+
 ===
 
 fmr
 111111 FRT 00000 FRB 0001001000 Rc
 0      6   11    16  21         31
 
+    f[FRT] = f[FRB];
+    if(Rc) frecord();
+
 ===
 
 fmsub
 111 P 11 FRT FRA FRB FRC 11100 Rc
 0   3 4  6   11  16  21  26    31
+
+    f[FRT] = f[FRA] * f[FRC] - f[FRB];
+    if(!P)
+        f[FRT] = float(f[FRT]);
+    if(Rc) frecord();
 
 ===
 
@@ -572,11 +585,17 @@ fnabs
 111111 FRT 00000 FRB 0010001000 Rc
 0      6   11    16  21         31
 
+    f[FRT] = -std::abs(f[FRB]);
+    if(Rc) frecord();
+
 ===
 
 fneg
 111111 FRT 00000 FRB 0000101000 Rc
 0      6   11    16  21         31
+
+    f[FRT] = -f[FRB];
+    if(Rc) frecord();
 
 ===
 
@@ -584,11 +603,21 @@ fnmadd
 111 P 11 FRT FRA FRB FRC 11111 Rc
 0   3 4  6   11  16  21  26    31
 
+    f[FRT] = -(f[FRA] * f[FRC] + f[FRB]);
+    if(!P)
+        f[FRT] = float(f[FRT]);
+    if(Rc) frecord();
+
 ===
 
 fnmsub
 111 P 11 FRT FRA FRB FRC 11110 Rc
 0   3 4  6   11  16  21  26    31
+
+    f[FRT] = -(f[FRA] * f[FRC] - f[FRB]);
+    if(!P)
+        f[FRT] = float(f[FRT]);
+    if(Rc) frecord();
 
 ===
 
@@ -601,6 +630,9 @@ fres
 frsp
 111111 FRT 00000 FRB 0000001100 Rc
 0      6   11    16  21         31
+
+    f[FRT] = (float) f[FRB];
+    if(Rc) frecord();
 
 ===
 
@@ -652,7 +684,7 @@ icbt
 
 isync
 
-010011 000000000000000 0000010110 0
+010011 000000000000000 0010010110 0
 0      6               21         31
 
     ;
