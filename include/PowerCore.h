@@ -23,7 +23,10 @@ public:
     uint32_t getXER() const;
     void setXER(uint32_t xer);
 
-    uint32_t (*syscall)(PowerCore&);
+    uint32_t (*syscall)(PowerCore&) = nullptr;
+
+    void (*debugger)(PowerCore&) = nullptr;
+    uint32_t (*getNextBreakpoint)(uint32_t addr) = nullptr;
 private:
     void setcr(int field, uint32_t x);
     uint32_t getcr(int field) const;

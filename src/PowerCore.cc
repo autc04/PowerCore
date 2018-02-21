@@ -192,8 +192,19 @@ static void disass1(uint32_t insn)
 void PowerCore::interpret1()
 {
     uint32_t insn;
+    uint32_t breakpoint = 0xFFFFFFFF;
+
+    if(getNextBreakpoint)
+        breakpoint = getNextBreakpoint(CIA);
     while(CIA != 0xFFFFFFFC)
     {
+        if(CIA == breakpoint)
+        {
+            if(debugger)
+                debugger(*this);
+            if(getNextBreakpoint)
+                breakpoint = getNextBreakpoint(CIA+4);
+        }
 #ifdef LOG_TRACE
         std::clog.clear();
         std::clog << "instruction at " << std::hex << CIA
@@ -223,6 +234,9 @@ void PowerCore::interpret1()
 #include "generated.interpret1.h"
         else
             unimplemented("(unknown)");
+
+        if(getNextBreakpoint && NIA != CIA + 4)
+            breakpoint = getNextBreakpoint(NIA);
 
         CIA = NIA;
     }
