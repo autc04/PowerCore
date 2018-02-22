@@ -198,7 +198,7 @@ struct powerpc_cpu_base : private PowerCore
 	void execute(uintptr_t addr)
 	{
 		CIA = addr;
-		interpret1();
+		PowerCore::execute();
 	}
 	void invalidate_cache_range(uint32_t *start, uint32_t size) {}
 	void enable_jit() { }

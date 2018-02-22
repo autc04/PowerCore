@@ -32,7 +32,7 @@ int main()
         
         core.CIA = 0;
         core.lr = 0xFFFFFFFC;
-        core.interpret1();
+        core.execute();
 
         std::cout << "out: " << std::dec << core.r[3] << std::endl;
     }

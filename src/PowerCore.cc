@@ -176,6 +176,17 @@ void PowerCore::frecord()
     // ###
 }
 
+
+void PowerCore::flushCache()
+{
+
+}
+
+void PowerCore::flushCache(uint32_t addr, uint32_t sz)
+{
+    flushCache();
+}
+
 //#define LOG_TRACE
 
 static void disass1(uint32_t insn)

@@ -18,7 +18,6 @@ public:
     
     void *memoryBases[4] = { 0,0,0,0 };
 
-    void interpret1();
 
     uint32_t getXER() const;
     void setXER(uint32_t xer);
@@ -27,6 +26,10 @@ public:
 
     void (*debugger)(PowerCore&) = nullptr;
     uint32_t (*getNextBreakpoint)(uint32_t addr) = nullptr;
+
+    void execute() { interpret1(); }
+    void flushCache();
+    void flushCache(uint32_t from, uint32_t size);
 private:
     void setcr(int field, uint32_t x);
     uint32_t getcr(int field) const;
@@ -48,4 +51,6 @@ private:
     bool conditional(uint32_t BO, uint32_t BI);
 
     void unimplemented(const char* name);
+
+    void interpret1();
 };
