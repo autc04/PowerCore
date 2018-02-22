@@ -502,7 +502,7 @@ fcmp
         cc = 4;
     else
         cc = 2;
-    setcr(1,cc);
+    setcr(BF,cc);
     // ###
 
 ===

@@ -26,7 +26,7 @@ inline uint32_t swap32(uint32_t v) { return _byteswap_ulong(v); }
 #else
 inline uint16_t swap16(uint16_t v) { return __builtin_bswap16(v); }
 inline uint32_t swap32(uint32_t v) { return __builtin_bswap32(v); }
-inline uint32_t swap64(uint32_t v) { return __builtin_bswap64(v); }
+inline uint64_t swap64(uint64_t v) { return __builtin_bswap64(v); }
 #endif
 
 inline uint8_t swap(uint8_t v) { return v; }
@@ -113,7 +113,7 @@ float PowerCore::load<float>(uint32_t addr)
 template<>
 double PowerCore::load<double>(uint32_t addr)
 {
-    uint32_t i = load<uint64_t>(addr);
+    uint64_t i = load<uint64_t>(addr);
     double d;
     static_assert(sizeof(double) == 8, "unexpected double size");
     std::memcpy(&d, &i, 8);
