@@ -1,4 +1,6 @@
 #include <stdint.h>
+#include <unordered_map>
+#include <vector>
 
 class PowerCore
 {
@@ -27,7 +29,7 @@ public:
     void (*debugger)(PowerCore&) = nullptr;
     uint32_t (*getNextBreakpoint)(uint32_t addr) = nullptr;
 
-    void execute() { interpret1(); }
+    void execute();
     void flushCache();
     void flushCache(uint32_t from, uint32_t size);
 private:
@@ -53,4 +55,9 @@ private:
     void unimplemented(const char* name);
 
     void interpret1();
+    void interpret2(void ***opcodeRet);
+
+    uint8_t *fetchBlock(uint32_t addr);
+
+    std::unordered_map<uint32_t, std::vector<uint8_t>> blocks;
 };

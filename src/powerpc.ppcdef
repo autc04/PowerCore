@@ -138,11 +138,14 @@ b
 010010 LI AA LK
 0      6  30 31
 
+branch
+
     if(LK) lr = NIA;
     int32_t val = LI << 2;
     if(val & 0x02000000)
         val |= 0xFC000000;
     NIA = (AA ? 0 : CIA) + val;
+
 
 ===
 
@@ -150,11 +153,15 @@ be
 010110 LI AA LK
 0      6  30 31
 
+branch
+
 ===
 
 bc
 010000 BO BI BD AA LK
 0      6  11 16 30 31
+
+branch
 
     if(LK) lr = NIA;
     if(conditional(BO, BI))
@@ -166,11 +173,15 @@ bce
 001001 BO BI BD AA LK
 0      6  11 16 30 31
 
+branch
+
 ===
 
 bcctr
 010011 BO BI 00000 1000010000 LK
 0      6  11 16    21         31
+
+branch
 
     if(LK) lr = NIA;
     if(conditional(BO | 0x4, BI))
@@ -182,11 +193,15 @@ bcctre
 010011 BO BI 00000 1000010001 LK
 0      6  11 16    21         31
 
+branch
+
 ===
 bclr
 
 010011 BO BI 00000 0000010000 LK
 0      6  11 16    21         31
+
+branch
 
     if(conditional(BO, BI))
         NIA = lr & ~3;
@@ -197,6 +212,8 @@ bclre
 
 010011 BO BI 00000 0000010001 LK
 0      6  11 16    21         31
+
+branch
 
 ===
 
@@ -1334,6 +1351,8 @@ rlwnm
 sc
 010001 000000000000000000000000 1  0
 0      6                        30 31
+
+branch
 
     NIA = syscall(*this);
 

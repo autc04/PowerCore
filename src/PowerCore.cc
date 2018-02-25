@@ -179,12 +179,18 @@ void PowerCore::frecord()
 
 void PowerCore::flushCache()
 {
-
+    blocks.clear();
 }
 
 void PowerCore::flushCache(uint32_t addr, uint32_t sz)
 {
     flushCache();
+}
+
+void PowerCore::execute()
+{
+    interpret2(nullptr); 
+    //interpret1();
 }
 
 //#define LOG_TRACE
@@ -249,9 +255,80 @@ void PowerCore::interpret1()
         if(getNextBreakpoint && NIA != CIA + 4)
             breakpoint = getNextBreakpoint(NIA);
 
+        if(NIA != CIA + 4)
+            std::clog << "jump: " << std::hex << NIA << std::endl;
         CIA = NIA;
     }
 }
+
+using TranslatedOpcode = void*;
+#include "generated.opcodes.h"
+
+
+uint8_t *PowerCore::fetchBlock(uint32_t addr)
+{
+    auto it = blocks.find(addr);
+    if(it != blocks.end())
+    {
+        std::cout << "Again at " << std::hex << addr << std::endl;
+        return it->second.data();
+    }
+    std::vector<uint8_t> block;
+
+    std::cout << "First time at " << std::hex << addr << std::endl;
+
+    auto allocOpcode = [&](unsigned sz) {
+        block.resize(block.size() + sz);
+        return block.data() + block.size() - sz;
+    };
+
+    void ** opcodes;
+    interpret2(&opcodes);
+    auto makeOpcode = [opcodes](unsigned idx) { return opcodes[idx]; };
+
+    for(;;)
+    {
+        uint32_t insn = load<uint32_t>(addr);
+        if(false)
+            ;
+#include "generated.translate.h"
+        else
+            unimplemented("unknown during translation");
+        addr += 4;
+    }
+
+    return blocks.emplace(addr, std::move(block)).first->second.data();
+}
+
+void PowerCore::interpret2(void ***opcodesRet)
+{
+    if(opcodesRet)
+    {
+        static void *opcodes[] = {
+#include "generated.opcodelabels.h"
+        };
+        *opcodesRet = &opcodes[0];
+        return;
+    }
+
+loop:
+    if(CIA == 0xFFFFFFFC)
+    {
+        std::cout << "Exit address reached.\n";
+        return;
+    }
+    uint8_t *code = fetchBlock(CIA);
+    if(debugger)
+        debugger(*this);
+
+    goto *(*(TranslatedOpcode*)code);
+
+#include "generated.interpret2.h"
+
+    std::cout << "Fallthrough.\n";
+    std::abort();
+}
+
 
 void PowerCore::unimplemented(const char* name)
 {

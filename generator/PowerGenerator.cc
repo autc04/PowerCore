@@ -186,12 +186,21 @@ class InstructionInfo
     std::vector<Field> fields;
     std::string code;
     int lineno;
+    bool branch = false;
 public:
     InstructionInfo(InputParser& in);
 
     void generateElseIf(std::ostream& out);
     void generateInterpElseIf(std::ostream& out);
     void generateDisassElseIf(std::ostream& out);
+
+    void layoutOperands();
+
+    void generateOperandStruct(std::ostream& out);
+
+    void generateTranslateElseIf(std::ostream& out, int index);
+    void generateOpcodeLabel(std::ostream& out);
+    void generateInterp2(std::ostream& out);
 };
 
 InstructionInfo::InstructionInfo(InputParser& in)
@@ -224,18 +233,31 @@ InstructionInfo::InstructionInfo(InputParser& in)
     for(int i = 0; i < fieldLabels.size(); i++)
         fields.emplace_back(fieldBits[i], fieldBits[i+1], fieldLabels[i]);
 
-    if(in.peek() == "===")
+    for(;;)
+    {
+        std::string command = in.peek();
+
+        if(code.empty() && !command.empty() && std::isspace(command[0]))
+        {
+            code = in.getBlock();
+            lineno = in.getLineno();
+        }
+        else
+        {
+            command = in.get();
+
+            if(command.empty() || command == "===")
+                break;
+            else if(command == "branch")
+                branch = true;
+        }
+    }
+
+    if(code.empty())
     {
         code = "unimplemented(\"" + name + "\")\n;";
+        lineno = in.getLineno();
     }
-    else
-    {
-        code = in.getBlock();
-    }
-    lineno = in.getLineno();
-
-    if(in.get() != "===")
-        in.error("'===' expected at end of instruction");
 }
 
 void InstructionInfo::generateElseIf(std::ostream& out)
@@ -249,11 +271,11 @@ void InstructionInfo::generateElseIf(std::ostream& out)
     for(auto f : fields)
         f.generateDecl(out);
     out << "\n";
-    out << "#line " << std::dec << lineno << " \"" << definitionFile << "\"\n";
 }
 void InstructionInfo::generateInterpElseIf(std::ostream& out)
 {
     generateElseIf(out);
+    out << "#line " << std::dec << lineno << " \"" << definitionFile << "\"\n";
     out << code;
     out << "}\n";
 }
@@ -275,6 +297,97 @@ void InstructionInfo::generateDisassElseIf(std::ostream& out)
         out << " << std::dec << " << f.name;
     }
     out << " << std::endl;\n";
+    out << "}\n";
+}
+
+void InstructionInfo::generateOperandStruct(std::ostream& out)
+{
+    out << "struct Opcode_" << name << "\n";
+    out << "{\n";
+    out << "    TranslatedOpcode opcode;\n";
+
+    auto sortedFields = fields;
+    std::sort(sortedFields.begin(), sortedFields.end(), [](const Field& a, const Field& b) {
+        return (a.to - a.from) > (b.to - b.from);
+    });
+    if(branch)
+        out << "    uint32_t CIA;\n";
+
+    for(const Field& f : sortedFields)
+    {
+        if(f.name.empty() || f.match)
+            continue;
+        out << "    ";
+        if(f.to-f.from > 16)
+            out << "uint32_t";
+        else if(f.to-f.from > 8)
+            out << "uint16_t";
+        else
+            out << "uint8_t";
+        out << " " << f.name << ";\n";
+    }
+        
+    out << "};\n\n";
+}
+
+void InstructionInfo::generateTranslateElseIf(std::ostream& out, int idx)
+{
+    generateElseIf(out);
+    out << "    Opcode_" << name << "& translated = "
+        << "*reinterpret_cast<Opcode_" << name << "*>(allocOpcode("
+        << "sizeof(Opcode_" << name << ")));\n";
+    out << "    translated.opcode = makeOpcode(" << std::dec << idx << ");\n";
+
+    for(const Field& f : fields)
+    {
+        if(f.name.empty() || f.match)
+            continue;
+        out << "    translated." << f.name << " = " << f.name << ";\n";
+    }
+    if(branch)
+    {
+        out << "    translated.CIA = addr;\n";
+        out << "    break;\n";
+    }
+    out << "}\n";
+}
+
+void InstructionInfo::generateOpcodeLabel(std::ostream& out)
+{
+    out << "    &&label_" << name << ",\n";
+}
+
+void InstructionInfo::generateInterp2(std::ostream& out)
+{
+    out << "label_" << name << ":\n";
+    out << "{\n";
+
+    out << "    Opcode_" << name << "& translated = "
+    << "*reinterpret_cast<Opcode_" << name << "*>(code);\n";
+    for(const Field& f : fields)
+    {
+        if(f.name.empty() || f.match)
+            continue;
+        out << "    uint32_t " << f.name << " = translated." << f.name << ";\n";
+    }
+    if(branch)
+    {
+        out << "    CIA = translated.CIA;\n";
+        out << "    uint32_t NIA = CIA + 4;\n";
+    }
+
+    out << code;
+
+    if(branch)
+    {
+        out << "    CIA = NIA;\n";
+        out << "    goto loop;\n";
+    }
+    else
+    {
+        out << "    code += sizeof(translated);\n";
+        out << "    goto *(*(TranslatedOpcode*)code);\n";
+    }
     out << "}\n";
 }
 
@@ -300,6 +413,29 @@ int main(int argc, char *argv[])
         std::ofstream out("generated.disass.h");
         for(auto insn : insns)
             insn.generateDisassElseIf(out);
+    }
+    {
+        std::ofstream out("generated.opcodes.h");
+        for(auto& insn : insns)
+        {
+            insn.generateOperandStruct(out);
+        }
+    }
+    {
+        std::ofstream out("generated.translate.h");
+        int idx = 0;
+        for(auto insn : insns)
+            insn.generateTranslateElseIf(out, idx++);
+    }
+    {
+        std::ofstream out("generated.opcodelabels.h");
+        for(auto insn : insns)
+            insn.generateOpcodeLabel(out);
+    }
+    {
+        std::ofstream out("generated.interpret2.h");
+        for(auto insn : insns)
+            insn.generateInterp2(out);
     }
 
     return 0;
