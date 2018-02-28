@@ -265,17 +265,17 @@ using TranslatedOpcode = void*;
 #include "generated.opcodes.h"
 
 
-uint8_t *PowerCore::fetchBlock(uint32_t addr)
+uint8_t *PowerCore::fetchBlock(uint32_t blockAddr)
 {
-    auto it = blocks.find(addr);
+    auto it = blocks.find(blockAddr);
     if(it != blocks.end())
     {
-        std::cout << "Again at " << std::hex << addr << std::endl;
+        //std::cout << "Again at " << std::hex << blockAddr << std::endl;
         return it->second.data();
     }
     std::vector<uint8_t> block;
 
-    std::cout << "First time at " << std::hex << addr << std::endl;
+    std::cout << "First time at " << std::hex << blockAddr << std::endl;
 
     auto allocOpcode = [&](unsigned sz) {
         block.resize(block.size() + sz);
@@ -286,6 +286,7 @@ uint8_t *PowerCore::fetchBlock(uint32_t addr)
     interpret2(&opcodes);
     auto makeOpcode = [opcodes](unsigned idx) { return opcodes[idx]; };
 
+    uint32_t addr = blockAddr;
     for(;;)
     {
         uint32_t insn = load<uint32_t>(addr);
@@ -297,7 +298,7 @@ uint8_t *PowerCore::fetchBlock(uint32_t addr)
         addr += 4;
     }
 
-    return blocks.emplace(addr, std::move(block)).first->second.data();
+    return blocks.emplace(blockAddr, std::move(block)).first->second.data();
 }
 
 void PowerCore::interpret2(void ***opcodesRet)
