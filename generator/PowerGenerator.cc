@@ -218,14 +218,17 @@ InstructionInfo::InstructionInfo(InputParser& in)
     {
         std::string s;
         int b;
-        fin >> s >> std::ws;
-        bin >> b >> std::ws;
+        fin >> s;
+        bin >> b;
         if(!fin && !bin)
             break;
         if(!fin || !bin)
             in.error("can't parse instruction layout at field ", fieldLabels.size() + 1);
+        fin >> std::ws;
+        bin >> std::ws;
         if(fin.tellg() != bin.tellg())
             in.error("instruction layout misaligned at field ", fieldLabels.size() + 1);
+        
         fieldLabels.push_back(s);
         fieldBits.push_back(b);
     }
