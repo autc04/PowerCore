@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
+#include <set>
 
 std::string definitionFile;
 
@@ -129,6 +130,8 @@ struct Field
 
     void generateCondition(SeparatedListHelper& out);
     void generateDecl(std::ostream& out);
+    
+    int bitsize() { return to - from; }
 };
 
 
@@ -179,9 +182,9 @@ void Field::generateDecl(std::ostream& out)
     }
 }
 
-
 class InstructionInfo
 {
+public:
     std::string name;
     std::vector<Field> fields;
     std::string code;
@@ -201,6 +204,10 @@ public:
     void generateTranslateElseIf(std::ostream& out, int index);
     void generateOpcodeLabel(std::ostream& out);
     void generateInterp2(std::ostream& out);
+    
+    
+    void expand(std::vector<InstructionInfo>& out);
+    void joinRanges();
 };
 
 InstructionInfo::InstructionInfo(InputParser& in)
@@ -260,6 +267,32 @@ InstructionInfo::InstructionInfo(InputParser& in)
     {
         code = "unimplemented(\"" + name + "\")\n;";
         lineno = in.getLineno();
+    }
+}
+
+void InstructionInfo::joinRanges()
+{
+    if(!fields.size())
+        return;
+    
+    std::vector<Field> newFields;
+    newFields.push_back(fields[0]);
+    for(int i = 1, n = fields.size(); i < n; i++)
+    {
+        Field& f1 = newFields.back();
+        Field& f2 = fields[i];
+        
+        if(f1.match && f2.match)
+        {
+            if(f1.to == f2.from)
+            {
+                f1.value <<= f2.to - f2.from;
+                f1.value |= f2.value;
+                continue;
+            }
+        }
+        
+        newFields.push_back(f2);
     }
 }
 
@@ -369,9 +402,12 @@ void InstructionInfo::generateInterp2(std::ostream& out)
     << "*reinterpret_cast<Opcode_" << name << "*>(code);\n";
     for(const Field& f : fields)
     {
-        if(f.name.empty() || f.match)
+        if(f.name.empty())
             continue;
-        out << "    uint32_t " << f.name << " = translated." << f.name << ";\n";
+        if(f.match)
+            out << "    const uint32_t " << f.name << " = 0x" << std::hex << f.value << ";" << std::endl;
+        else
+            out << "    uint32_t " << f.name << " = translated." << f.name << ";\n";
     }
     if(branch)
     {
@@ -394,6 +430,57 @@ void InstructionInfo::generateInterp2(std::ostream& out)
     out << "}\n";
 }
 
+void InstructionInfo::expand(std::vector<InstructionInfo>& out)
+{
+    out.push_back(*this);
+    return;
+    std::vector<Field*> expandedFields;
+    for(Field& f : fields)
+    {
+        if(f.match)
+            continue;
+        if(f.to - f.from > 1)
+            continue;
+        f.match = true;
+        f.value = 0;
+        expandedFields.push_back(&f);
+    }
+    
+    bool carry;
+    std::string saveName = name;
+    
+    do
+    {
+        carry = true;
+
+        for(Field *f : expandedFields)
+        {
+            if(!carry)
+                break;
+            
+            uint32_t mask = ((uint32_t)1U << (uint32_t)f->bitsize()) - 1U;
+            f->value = (f->value + 1) & mask;
+            carry = (f->value & mask) == 0;
+        }
+        
+        std::ostringstream nstr;
+        nstr << saveName << std::hex;
+        for(Field *f : expandedFields)
+            nstr << "_" << f->value;
+        name = nstr.str();
+        std::cout << name << std::endl;
+        out.push_back(*this);
+    } while(!carry);
+    
+    name = saveName;
+    
+    for(Field *f : expandedFields)
+    {
+        f->match = false;
+        f->value = 0;
+    }
+}
+
 int main(int argc, char *argv[])
 {
     if(argc != 2)
@@ -404,7 +491,23 @@ int main(int argc, char *argv[])
     InputParser in(stream);
     while(in.haveMore())
     {
-        insns.emplace_back(in);
+        InstructionInfo(in).expand(insns);
+    }
+
+    {
+        using namespace std;
+        set<pair<int,int>> matchranges;
+        for(auto& insn : insns)
+        {
+            for(auto& field : insn.fields)
+            {
+                if(field.match)
+                    matchranges.emplace(field.from, field.to);
+            }
+        }
+        
+        for(auto p : matchranges)
+            cout << p.first << ".." << p.second << std::endl;
     }
 
     {

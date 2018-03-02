@@ -16,6 +16,7 @@ add_custom_command(
 add_library(PowerCore src/PowerCore.cc
         ${CMAKE_CURRENT_BINARY_DIR}/generated.interpret1.h
         ${CMAKE_CURRENT_BINARY_DIR}/generated.disass.h
+        ${CMAKE_CURRENT_BINARY_DIR}/generated.interpret2.h
     )
 target_include_directories(PowerCore PUBLIC include)
 target_include_directories(PowerCore PRIVATE ${CMAKE_CURRENT_BINARY_DIR})

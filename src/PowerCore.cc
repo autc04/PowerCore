@@ -179,6 +179,7 @@ void PowerCore::frecord()
 
 void PowerCore::flushCache()
 {
+    std::cout << "flush cache\n";
     blocks.clear();
 }
 
@@ -189,7 +190,7 @@ void PowerCore::flushCache(uint32_t addr, uint32_t sz)
 
 void PowerCore::execute()
 {
-    interpret2(nullptr); 
+    interpret2(nullptr);
     //interpret1();
 }
 
@@ -256,7 +257,7 @@ void PowerCore::interpret1()
             breakpoint = getNextBreakpoint(NIA);
 
         if(NIA != CIA + 4)
-            std::clog << "jump: " << std::hex << NIA << std::endl;
+            std::clog << "jump: " << std::hex << NIA << " (from " << CIA << ")" << std::endl;
         CIA = NIA;
     }
 }
@@ -318,14 +319,20 @@ loop:
         std::cout << "Exit address reached.\n";
         return;
     }
-    uint8_t *code = fetchBlock(CIA);
-    if(debugger)
+    if(CIA == 0)
+    {
+        std::cout << "NULL\n";
         debugger(*this);
+    }
+    uint8_t *code = fetchBlock(CIA);
+    {
+        //if(debugger)
+        //    debugger(*this);
 
-    goto *(*(TranslatedOpcode*)code);
+        goto *(*(TranslatedOpcode*)code);
 
 #include "generated.interpret2.h"
-
+    }
     std::cout << "Fallthrough.\n";
     std::abort();
 }
