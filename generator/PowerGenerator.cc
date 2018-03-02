@@ -172,11 +172,11 @@ void Field::generateDecl(std::ostream& out)
     {
         if(match)
         {
-            out << "    const uint32_t " << name << " = 0x" << std::hex << value << ";" << std::endl;
+            out << "    const uint32_t " << name << " [[maybe_unused]] = 0x" << std::hex << value << ";" << std::endl;
         }
         else
         {
-            out << "    uint32_t " << name << " = (insn >> " << std::dec << (32-to) << ") & 0x" << std::hex << 
+            out << "    uint32_t " << name << " [[maybe_unused]] = (insn >> " << std::dec << (32-to) << ") & 0x" << std::hex << 
                 (1 << (to-from)) - 1 << ";" << std::endl;
         }
     }
@@ -405,9 +405,9 @@ void InstructionInfo::generateInterp2(std::ostream& out)
         if(f.name.empty())
             continue;
         if(f.match)
-            out << "    const uint32_t " << f.name << " = 0x" << std::hex << f.value << ";" << std::endl;
+            out << "    const uint32_t " << f.name << " [[maybe_unused]] = 0x" << std::hex << f.value << ";" << std::endl;
         else
-            out << "    uint32_t " << f.name << " = translated." << f.name << ";\n";
+            out << "    uint32_t " << f.name << " [[maybe_unused]] = translated." << f.name << ";\n";
     }
     if(branch)
     {

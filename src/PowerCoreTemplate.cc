@@ -5,7 +5,7 @@
 
 //#define LOG_TRACE
 
-static void disass1(uint32_t insn)
+[[maybe_unused]] static void disass1(uint32_t insn)
 {
     if(false)
         ;
