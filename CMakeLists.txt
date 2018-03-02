@@ -13,7 +13,11 @@ add_custom_command(
     DEPENDS powergenerator src/powerpc.ppcdef
 )
 
-add_library(PowerCore src/PowerCore.cc
+add_library(PowerCore
+        src/PowerCore.cc
+        src/PowerCoreTemplate.cc
+        src/PowerCoreInlines.h
+
         ${CMAKE_CURRENT_BINARY_DIR}/generated.interpret1.h
         ${CMAKE_CURRENT_BINARY_DIR}/generated.disass.h
         ${CMAKE_CURRENT_BINARY_DIR}/generated.interpret2.h

@@ -38,7 +38,7 @@ public:
 };
 
 InputParser::InputParser(std::istream& in)
-    : stream(in), good(true), oldLineno(1), lineno(0)
+    : stream(in), good(true), lineno(0), oldLineno(1)
 {
     read();
 }
