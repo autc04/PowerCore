@@ -36,14 +36,14 @@ inline uint64_t swap(uint64_t v) { return swap64(v); }
 inline int64_t swap(int64_t v) { return swap64(v); }
 
 
-void PowerCore::setXER(uint32_t XER)
+inline void PowerCore::setXER(uint32_t XER)
 {
     SO = !! (XER & (1<<31));
     OV = !! (XER & (1<<30));
     CA = !! (XER & (1<<29));
 }
 
-uint32_t PowerCore::getXER() const
+inline uint32_t PowerCore::getXER() const
 {
     return ((uint32_t)SO << 31) | ((uint32_t)OV << 30) | ((uint32_t)CA << 29);
 }
@@ -98,7 +98,7 @@ T PowerCore::load(uint32_t addr)
 }
 
 template<>
-float PowerCore::load<float>(uint32_t addr)
+inline float PowerCore::load<float>(uint32_t addr)
 {
     uint32_t i = load<uint32_t>(addr);
     float f;
@@ -108,7 +108,7 @@ float PowerCore::load<float>(uint32_t addr)
 }
 
 template<>
-double PowerCore::load<double>(uint32_t addr)
+inline double PowerCore::load<double>(uint32_t addr)
 {
     uint64_t i = load<uint64_t>(addr);
     double d;
@@ -128,7 +128,7 @@ void PowerCore::store(uint32_t addr, T value)
 }
 
 template<>
-void PowerCore::store<float>(uint32_t addr, float value)
+inline void PowerCore::store<float>(uint32_t addr, float value)
 {
     uint32_t u;
     static_assert(sizeof(float) == 4, "unexpected float size");
@@ -137,7 +137,7 @@ void PowerCore::store<float>(uint32_t addr, float value)
 }
 
 template<>
-void PowerCore::store<double>(uint32_t addr, double value)
+inline void PowerCore::store<double>(uint32_t addr, double value)
 {
     uint64_t u;
     static_assert(sizeof(double) == 8, "unexpected double size");
@@ -168,7 +168,7 @@ inline bool PowerCore::conditional(uint32_t BO, uint32_t BI)
     return ctr_ok && cond_ok;
 }
 
-void PowerCore::frecord()
+inline void PowerCore::frecord()
 {
     // ###
 }
