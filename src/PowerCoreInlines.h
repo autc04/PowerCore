@@ -36,17 +36,6 @@ inline uint64_t swap(uint64_t v) { return swap64(v); }
 inline int64_t swap(int64_t v) { return swap64(v); }
 
 
-inline void PowerCore::setXER(uint32_t XER)
-{
-    SO = !! (XER & (1<<31));
-    OV = !! (XER & (1<<30));
-    CA = !! (XER & (1<<29));
-}
-
-inline uint32_t PowerCore::getXER() const
-{
-    return ((uint32_t)SO << 31) | ((uint32_t)OV << 30) | ((uint32_t)CA << 29);
-}
 
 inline void *PowerCore::translateAddress(uint32_t addr) const
 {
