@@ -72,6 +72,11 @@ void PowerCore::interpret1()
 using TranslatedOpcode = void*;
 #include "generated.opcodes.h"
 
+struct Opcode_breakpoint
+{
+    TranslatedOpcode opcode;
+    uint32_t CIA;
+};
 
 uint8_t *PowerCore::fetchBlock(uint32_t blockAddr)
 {
@@ -90,6 +95,10 @@ uint8_t *PowerCore::fetchBlock(uint32_t blockAddr)
         return block.data() + block.size() - sz;
     };
 
+    uint32_t breakpoint = 0xFFFFFFFF;
+    if(getNextBreakpoint)
+        breakpoint = getNextBreakpoint(blockAddr);
+
     void ** opcodes;
     interpret2(&opcodes);
     auto makeOpcode = [opcodes](unsigned idx) { return opcodes[idx]; };
@@ -97,6 +106,13 @@ uint8_t *PowerCore::fetchBlock(uint32_t blockAddr)
     uint32_t addr = blockAddr;
     for(;;)
     {
+        if(addr == breakpoint)
+        {
+            Opcode_breakpoint& translated = *reinterpret_cast<Opcode_breakpoint*>(allocOpcode(sizeof(Opcode_breakpoint)));
+            translated.opcode = makeOpcode(-1);
+            translated.CIA = addr;
+            breakpoint = getNextBreakpoint(addr + 4);
+        }
         uint32_t insn = load<uint32_t>(addr);
         if(false)
             ;
@@ -114,9 +130,10 @@ void PowerCore::interpret2(void ***opcodesRet)
     if(opcodesRet)
     {
         static void *opcodes[] = {
+            &&debugger,
 #include "generated.opcodelabels.h"
         };
-        *opcodesRet = &opcodes[0];
+        *opcodesRet = &opcodes[1];
         return;
     }
 
@@ -142,4 +159,13 @@ loop:
     }
     std::cout << "Fallthrough.\n";
     std::abort();
+    
+debugger:
+    if(debugger)
+    {
+        Opcode_breakpoint& translated = *reinterpret_cast<Opcode_breakpoint*>(code);
+        CIA = translated.CIA;
+        debugger(*this);
+    }
+    goto loop;
 }

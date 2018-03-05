@@ -193,9 +193,10 @@ public:
 public:
     InstructionInfo(InputParser& in);
 
-    void generateElseIf(std::ostream& out);
+    void generateElseIf(std::ostream& out, bool declareFields = true);
     void generateInterpElseIf(std::ostream& out);
     void generateDisassElseIf(std::ostream& out);
+    void generateFindInstructionNameElseIf(std::ostream& out);
 
     void layoutOperands();
 
@@ -296,17 +297,20 @@ void InstructionInfo::joinRanges()
     }
 }
 
-void InstructionInfo::generateElseIf(std::ostream& out)
+void InstructionInfo::generateElseIf(std::ostream& out, bool declareFields)
 {
     out << "else if(";
     SeparatedListHelper slh(out, " && ");
     for(auto f : fields)
         f.generateCondition(slh);
     out << ")\n";
-    out << "{\n";
-    for(auto f : fields)
-        f.generateDecl(out);
-    out << "\n";
+    if(declareFields)
+    {
+        out << "{\n";
+        for(auto f : fields)
+            f.generateDecl(out);
+        out << "\n";
+    }
 }
 void InstructionInfo::generateInterpElseIf(std::ostream& out)
 {
@@ -335,6 +339,13 @@ void InstructionInfo::generateDisassElseIf(std::ostream& out)
     out << " << std::endl;\n";
     out << "}\n";
 }
+
+void InstructionInfo::generateFindInstructionNameElseIf(std::ostream& out)
+{
+    generateElseIf(out,false);
+    out << "    return \"" << name << "\";\n";
+}
+
 
 void InstructionInfo::generateOperandStruct(std::ostream& out)
 {
@@ -519,6 +530,11 @@ int main(int argc, char *argv[])
         std::ofstream out("generated.disass.h");
         for(auto insn : insns)
             insn.generateDisassElseIf(out);
+    }
+    {
+        std::ofstream out("generated.insnnames.h");
+        for(auto insn : insns)
+            insn.generateFindInstructionNameElseIf(out);
     }
     {
         std::ofstream out("generated.opcodes.h");
