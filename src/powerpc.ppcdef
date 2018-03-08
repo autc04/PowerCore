@@ -902,6 +902,13 @@ lmw
 101110 RT RA D
 0      6  11 16
 
+    uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
+    while(RT <= 31)
+    {
+        r[RT++] = load<uint32_t>(ea);
+        ea += 4;
+    }
+
 ===
 lswi
 011111 RT RA NB 1001010101 0
@@ -1615,6 +1622,13 @@ sthbrxe
 stmw
 101111 RS RA D
 0      6  11 16
+
+    uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
+    while(RS <= 31)
+    {
+        store<uint32_t>(ea, r[RS++]);
+        ea += 4;
+    }
 
 ===
 stswi
