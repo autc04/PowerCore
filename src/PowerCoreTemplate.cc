@@ -2,6 +2,7 @@
 #include "PowerCoreInlines.h"
 #include <iostream>
 #include <iomanip>
+#include <cmath>
 
 //#define LOG_TRACE
 

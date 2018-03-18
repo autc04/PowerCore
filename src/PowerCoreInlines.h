@@ -1,5 +1,6 @@
 #pragma once
 #include <PowerCore.h>
+#include <cstring>
 
 #if !defined(BIGENDIAN) & !defined(LITTLEENDIAN)
 
