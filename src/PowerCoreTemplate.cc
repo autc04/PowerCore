@@ -102,7 +102,7 @@ uint8_t *PowerCore::fetchBlock(uint32_t blockAddr)
 
     void ** opcodes;
     interpret2(&opcodes);
-    auto makeOpcode = [opcodes](unsigned idx) { return opcodes[idx]; };
+    auto makeOpcode = [opcodes](int idx) { return opcodes[idx]; };
 
     uint32_t addr = blockAddr;
     for(;;)
