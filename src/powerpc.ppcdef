@@ -989,7 +989,7 @@ mcrf
 010011 BF 00 BFA 0000000 0000000000 0
 0      6  9  11  14      21         31
 
-    setcr(BFA, getcr(BF));
+    setcr(BF, getcr(BFA));
 
 ===
 
