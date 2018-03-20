@@ -162,3 +162,8 @@ inline void PowerCore::frecord()
 {
     // ###
 }
+
+inline uint32_t PowerCore::getfpscr()
+{
+    return 0; // ###
+}

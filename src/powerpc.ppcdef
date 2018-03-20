@@ -1038,6 +1038,9 @@ mffs
 111111 FRT 0000000000 1001000111 Rc
 0      6   11         21         31
 
+    uint64_t ffs = getfpscr();
+    std::memcpy(&f[FRT], &ffs, 8);
+
 ===
 mfmsr
 011111 RT 0000000000 0001010011 0

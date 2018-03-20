@@ -43,6 +43,7 @@ private:
     bool crbit(int bit) const;
 
     void frecord();
+    uint32_t getfpscr();
 
     void * translateAddress(uint32_t addr) const;
 
