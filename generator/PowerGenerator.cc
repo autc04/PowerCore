@@ -266,6 +266,7 @@ InstructionInfo::InstructionInfo(InputParser& in)
 
     if(code.empty())
     {
+        branch = true;
         code = "unimplemented(\"" + name + "\")\n;";
         lineno = in.getLineno();
     }
