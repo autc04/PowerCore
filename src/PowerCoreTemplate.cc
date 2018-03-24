@@ -89,7 +89,7 @@ uint8_t *PowerCore::fetchBlock(uint32_t blockAddr)
     }
     std::vector<uint8_t> block;
 
-    std::cout << "First time at " << std::hex << blockAddr << std::endl;
+    //std::cout << "First time at " << std::hex << blockAddr << std::endl;
 
     auto allocOpcode = [&](unsigned sz) {
         block.resize(block.size() + sz);
@@ -141,7 +141,7 @@ void PowerCore::interpret2(void ***opcodesRet)
 loop:
     if(CIA == 0xFFFFFFFC)
     {
-        std::cout << "Exit address reached.\n";
+        //std::cout << "Exit address reached.\n";
         return;
     }
     if(CIA == 0)
