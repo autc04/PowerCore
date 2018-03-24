@@ -914,6 +914,25 @@ lswi
 011111 RT RA NB 1001010101 0
 0      6  11 16 21         31
 
+    uint32_t ea = RA ? r[RA] : 0;
+    int n = NB == 0 ? 32 : NB;
+    uint32_t shift = 24;
+    int reg = RT-1;
+    for(int i = 0; i < n; i++)
+    {
+        if(shift == 24)
+        {
+            reg = (reg+1) % 32;
+            r[reg] = 0;
+        }
+        r[reg] |= load<uint8_t>(ea++) << shift;
+
+        if(shift)
+            shift -= 8;
+        else
+            shift = 24;
+    }
+
 ===
 lswx
 011111 RT RA RB 1000010101 0
@@ -1637,6 +1656,21 @@ stmw
 stswi
 011111 RS RA NB 1011010101 0
 0      6  11 16 21         31
+
+    uint32_t ea = RA ? r[RA] : 0;
+    int n = NB == 0 ? 32 : NB;
+    int shift = 24;
+    for(int i = 0; i < n; i++)
+    {
+        store<uint8_t>(ea + i, r[RS] >> shift);
+
+        shift -= 8;
+        if(shift < 0)
+        {
+            shift = 24;
+            RS = (RS+1) % 32;
+        }
+    }
 
 ===
 stswx
