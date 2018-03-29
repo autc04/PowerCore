@@ -8,7 +8,6 @@
 
 void PowerCore::flushCache()
 {
-    std::cout << "flush cache\n";
     blocks.clear();
 }
 
