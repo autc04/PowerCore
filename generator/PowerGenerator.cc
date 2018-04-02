@@ -8,6 +8,7 @@
 #include <sstream>
 #include <set>
 #include <cassert>
+#include <iterator>
 
 std::string definitionFile;
 
