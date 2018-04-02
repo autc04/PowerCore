@@ -7,6 +7,7 @@
 #include <iostream>
 #include <sstream>
 #include <set>
+#include <cassert>
 
 std::string definitionFile;
 
@@ -125,6 +126,7 @@ struct Field
     std::string name;
     uint32_t value;
     bool match;
+    bool expand;
 
     Field(int from, int to, std::string str);
 
@@ -140,7 +142,7 @@ Field::Field(int from, int to, std::string str)
 {
     value = 0;
     match = true;
-
+    
     for(char c : str)
     {
         if(c == '1')
@@ -154,7 +156,10 @@ Field::Field(int from, int to, std::string str)
     {
         value = 0;
         name = str;
+        expand = (to - from == 1);
     }
+    else
+        expand = false;
 }
 
 void Field::generateCondition(SeparatedListHelper& out)
@@ -246,21 +251,42 @@ InstructionInfo::InstructionInfo(InputParser& in)
 
     for(;;)
     {
-        std::string command = in.peek();
+        std::string commandLine = in.peek();
 
-        if(code.empty() && !command.empty() && std::isspace(command[0]))
+        if(code.empty() && !commandLine.empty() && std::isspace(commandLine[0]))
         {
             code = in.getBlock();
             lineno = in.getLineno();
         }
         else
         {
-            command = in.get();
-
-            if(command.empty() || command == "===")
+            std::istringstream iss(in.get());
+            std::vector<std::string> command;
+            std::copy(std::istream_iterator<std::string>(iss), std::istream_iterator<std::string>(),
+                      std::back_inserter(command));
+            
+            if(commandLine.empty() || commandLine == "===")
                 break;
-            else if(command == "branch")
-                branch = true;
+            else if(command.size())
+            {
+                if(command[0] == "branch")
+                    branch = true;
+                else if(command[0] == "expand")
+                {
+                    assert(command.size() == 2);
+                    bool found = false;
+                    for(Field& f : fields)
+                        if(f.name == command[1])
+                        {
+                            f.expand = true;
+                            found = true;
+                            break;
+                        }
+                    assert(found);
+                }
+                else
+                    std::abort();
+            }
         }
     }
 
@@ -409,7 +435,10 @@ void InstructionInfo::generateInterp2(std::ostream& out)
 {
     out << "label_" << name << ":\n";
     out << "{\n";
-
+#if 0
+        // the following is just a comment line in assembly output:
+    out << "    __asm__ volatile(\"# instruction: " << name << "\");\n";
+#endif
     out << "    Opcode_" << name << "& translated = "
     << "*reinterpret_cast<Opcode_" << name << "*>(code);\n";
     for(const Field& f : fields)
@@ -444,14 +473,10 @@ void InstructionInfo::generateInterp2(std::ostream& out)
 
 void InstructionInfo::expand(std::vector<InstructionInfo>& out)
 {
-    out.push_back(*this);
-    return;
     std::vector<Field*> expandedFields;
     for(Field& f : fields)
     {
-        if(f.match)
-            continue;
-        if(f.to - f.from > 1)
+        if(f.match || !f.expand)
             continue;
         f.match = true;
         f.value = 0;
@@ -470,11 +495,20 @@ void InstructionInfo::expand(std::vector<InstructionInfo>& out)
             if(!carry)
                 break;
             
-            uint32_t mask = ((uint32_t)1U << (uint32_t)f->bitsize()) - 1U;
-            f->value = (f->value + 1) & mask;
-            carry = (f->value & mask) == 0;
+            //uint32_t mask = ((uint32_t)1U << (uint32_t)f->bitsize()) - 1U;
+            f->value = (f->value + 1) & 1; //mask;
+            carry = f->value == 0;
+
+            if(f->value == 0 || f->bitsize() == 1)
+            {
+                f->match = true;
+            }
+            else
+            {
+                f->match = false;
+            }
         }
-        
+
         std::ostringstream nstr;
         nstr << saveName << std::hex;
         for(Field *f : expandedFields)
@@ -506,7 +540,7 @@ int main(int argc, char *argv[])
         InstructionInfo(in).expand(insns);
     }
 
-    {
+    /*{
         using namespace std;
         set<pair<int,int>> matchranges;
         for(auto& insn : insns)
@@ -520,7 +554,7 @@ int main(int argc, char *argv[])
         
         for(auto p : matchranges)
             cout << p.first << ".." << p.second << std::endl;
-    }
+    }*/
 
     {
         std::ofstream out("generated.interpret1.h");

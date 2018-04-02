@@ -712,6 +712,8 @@ lbz
 10001 U RT RA D
 0     5 6  11 16
 
+expand RA
+
     uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
     r[RT] = load<uint8_t>(ea);
     if(U) r[RA] = ea;
@@ -727,6 +729,8 @@ lbzx
 
 011111 RT RA RB 0001 U  10111 0
 0      6  11 16 21   25 26    31
+
+expand RA
 
     uint32_t ea = (RA ? r[RA] : 0) + r[RB];
     r[RT] = load<uint8_t>(ea);
@@ -762,6 +766,8 @@ lfd
 11001 U FRT RA D
 0     5 6   11 16
 
+expand RA
+
     uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
     f[FRT] = load<double>(ea);
     if(U) r[RA] = ea;
@@ -777,6 +783,8 @@ lfde
 lfdx
 011111 FRT RA RB 1001 U  10111 0
 0      6   11 16 21   25 26    31
+
+expand RA
 
     uint32_t ea = (RA ? r[RA] : 0) + r[RB];
     f[FRT] = load<double>(ea);
@@ -794,6 +802,8 @@ lfs
 11000 U FRT RA D
 0     5 6   11 16
 
+expand RA
+
     uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
     f[FRT] = load<float>(ea);
     if(U) r[RA] = ea;
@@ -809,6 +819,8 @@ lfse
 lfsx
 011111 FRT RA RB 1000 U  10111 0
 0      6   11 16 21   25 26    31
+
+expand RA
 
     uint32_t ea = (RA ? r[RA] : 0) + r[RB];
     f[FRT] = load<float>(ea);
@@ -826,6 +838,8 @@ lha
 10101 U RT RA D
 0     5 6  11 16
 
+expand RA
+
     uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
     r[RT] = (int32_t) load<int16_t>(ea);
     if(U) r[RA] = ea;
@@ -840,6 +854,8 @@ lhax
 
 011111 RT RA RB 0101 U  10111 0
 0      6  11 16 21   25 26    31
+
+expand RA
 
     uint32_t ea = (RA ? r[RA] : 0) + r[RB];
     r[RT] = (int32_t) load<int16_t>(ea);
@@ -857,6 +873,8 @@ lhbrx
 011111 RT RA RB 1100010110 0
 0      6  11 16 21         31
 
+expand RA
+
     uint32_t ea = (RA ? r[RA] : 0) + r[RB];
     r[RT] = swap16( load<uint16_t>(ea) );
 
@@ -873,6 +891,8 @@ lhz
 10100 U RT RA D
 0     5 6  11 16
 
+expand RA
+
     uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
     r[RT] = load<uint16_t>(ea);
     if(U) r[RA] = ea;
@@ -886,6 +906,8 @@ lhzx
 
 011111 RT RA RB 0100 U  10111 0
 0      6  11 16 21   25 26    31
+
+expand RA
 
     uint32_t ea = (RA ? r[RA] : 0) + r[RB];
     r[RT] = load<uint16_t>(ea);
@@ -902,6 +924,8 @@ lmw
 101110 RT RA D
 0      6  11 16
 
+expand RA
+
     uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
     while(RT <= 31)
     {
@@ -913,6 +937,8 @@ lmw
 lswi
 011111 RT RA NB 1001010101 0
 0      6  11 16 21         31
+
+expand RA
 
     uint32_t ea = RA ? r[RA] : 0;
     int n = NB == 0 ? 32 : NB;
@@ -954,6 +980,8 @@ lwbrx
 011111 RT RA RB 1000010110 0
 0      6  11 16 21         31
 
+expand RA
+
     uint32_t ea = (RA ? r[RA] : 0) + r[RB];
     r[RT] = swap32( load<uint32_t>(ea) );
 ===
@@ -967,6 +995,8 @@ lwz
 
 10000 U RT RA D
 0     5 6  11 16
+
+expand RA
 
     uint32_t ea = (RA ? r[RA] : 0) + (int16_t)D;
     r[RT] = load<uint32_t>(ea);
