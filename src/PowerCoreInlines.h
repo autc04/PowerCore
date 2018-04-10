@@ -167,3 +167,12 @@ inline uint32_t PowerCore::getfpscr()
 {
     return 0; // ###
 }
+
+inline void PowerCore::checkInterrupt()
+{
+    if(!interruptFlag.test_and_set())
+    {
+        if(handleInterrupt)
+            handleInterrupt(*this);
+    }
+}

@@ -3,10 +3,10 @@
 #include <stdint.h>
 #include <unordered_map>
 #include <vector>
+#include <atomic>
 
-class PowerCore
+struct PowerCoreState
 {
-public:
     uint32_t r[32] = { 0 };
     double f[32] = { 0.0 };
     uint32_t cr = 0;
@@ -19,14 +19,23 @@ public:
     bool SO = false;
     bool OV = false;
     bool CA = false;
-    
+};
+
+class PowerCore : public PowerCoreState
+{
+public:
     void *memoryBases[4] = { 0,0,0,0 };
 
+    std::atomic_flag interruptFlag;
 
     uint32_t getXER() const;
     void setXER(uint32_t xer);
 
     uint32_t (*syscall)(PowerCore&) = nullptr;
+    void (*handleInterrupt)(PowerCore&) = nullptr;
+
+    void requestInterrupt();
+    void cancelInterrupt();
 
     void (*debugger)(PowerCore&) = nullptr;
     uint32_t (*getNextBreakpoint)(uint32_t addr) = nullptr;
@@ -59,6 +68,8 @@ private:
 
     void interpret1();
     void interpret2(void ***opcodeRet);
+
+    void checkInterrupt();
 
     uint8_t *fetchBlock(uint32_t addr);
 

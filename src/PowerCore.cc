@@ -41,3 +41,13 @@ uint32_t PowerCore::getXER() const
 {
     return ((uint32_t)SO << 31) | ((uint32_t)OV << 30) | ((uint32_t)CA << 29);
 }
+
+void PowerCore::requestInterrupt()
+{
+    interruptFlag.clear();
+}
+
+void PowerCore::cancelInterrupt()
+{
+    interruptFlag.test_and_set();
+}

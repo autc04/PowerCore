@@ -149,6 +149,7 @@ loop:
         std::cout << "NULL\n";
         debugger(*this);
     }
+    checkInterrupt();
     uint8_t *code = fetchBlock(CIA);
     {
         //if(debugger)
