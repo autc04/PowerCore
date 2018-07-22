@@ -21,6 +21,7 @@
 
 inline uint16_t swap16(uint16_t v) { return _byteswap_ushort(v); }
 inline uint32_t swap32(uint32_t v) { return _byteswap_ulong(v); }
+inline uint64_t swap64(uint64_t v) { return _byteswap_uint64(v); }
 #else
 inline uint16_t swap16(uint16_t v) { return __builtin_bswap16(v); }
 inline uint32_t swap32(uint32_t v) { return __builtin_bswap32(v); }
