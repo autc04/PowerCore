@@ -53,6 +53,9 @@ void InputParser::read()
         ++lineno;
         std::getline(stream, str);
 
+        if(str.size() > 0 && str.back() == '\r')
+            str = str.substr(0,str.size()-1);
+
         std::string::const_iterator p = 
             std::find_if(str.begin(), str.end(), [](char c) { return !std::isspace(c); });
 
@@ -89,6 +92,9 @@ std::string InputParser::getBlock()
     {
         ++lineno;
         std::getline(stream, str);
+        
+        if(str.size() > 0 && str.back() == '\r')
+            str = str.substr(0,str.size()-1);
 
         if(!str.empty() && !std::isspace(str[0]) && str.substr(0,2) != "//")
             break;
