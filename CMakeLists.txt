@@ -39,6 +39,8 @@ target_include_directories(CountInstructions PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
 add_executable(testbed test/main.cc)
 target_link_libraries(testbed PowerCore)
 
+if(NOT WIN32)
 add_executable(test-powerpc test/test-powerpc.cpp)
 target_compile_definitions(test-powerpc PRIVATE EMU_POWERCORE)
 target_link_libraries(test-powerpc PowerCore)
+endif()
