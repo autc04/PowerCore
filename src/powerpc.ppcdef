@@ -968,6 +968,12 @@ lswx
 lwarx
 011111 RT RA RB 0000010100 0
 0      6  11 16 21         31
+
+    uint32_t ea = (RA ? r[RA] : 0) + r[RB];
+    r[RT] = load<uint32_t>(ea);
+    setcr(0, 0x2 | (getcr(0) & 1) );
+    // FIXME: for now, everything is single-threaded
+
 ===
 lwarxe
 011111 RT RA RB 0001111110 0
@@ -1759,6 +1765,11 @@ stwcx
 011111 RS RA RB 0010010110 1
 0      6  11 16 21         31
 
+    uint32_t ea = (RA ? r[RA] : 0) + r[RB];
+    store<uint32_t>(ea, r[RS]);
+
+    // FIXME: for now, everything is single-threaded
+
 ===
 stwcxe
 011111 RS RA RB 0010011110 1
@@ -1866,6 +1877,15 @@ subfze64
 
 ===
 
+sync
+
+011111 0000 1  0000000000 1001010110 0
+0      6    10 11         21         31
+
+    ;
+
+===
+
 td
 011111 TO RA RB 0001000100 0
 0      6  11 16 21         31
@@ -1951,4 +1971,6 @@ emulop
 
     return;
 
+
 ===
+
