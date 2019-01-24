@@ -22,10 +22,10 @@ void PowerCore::execute()
     //interpret1();
 }
 
-void PowerCore::unimplemented(const char* name)
+void PowerCore::unimplemented(const char* name, uint32_t addr)
 {
-    uint32_t insn = load<uint32_t>(CIA);
-    std::cerr << "Unimplemented instruction " << name << " at " << std::hex << CIA
+    uint32_t insn = load<uint32_t>(addr);
+    std::cerr << "Unimplemented instruction " << name << " at " << std::hex << addr
                 << ": " << std::hex << insn << std::endl << std::flush;
     exit(1);
 }

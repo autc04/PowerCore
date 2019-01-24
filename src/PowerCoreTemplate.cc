@@ -119,7 +119,10 @@ uint8_t *PowerCore::fetchBlock(uint32_t blockAddr)
             ;
 #include "generated.translate.h"
         else
-            unimplemented("unknown during translation");
+        {
+            std::cerr << "Unimplemented instruction " << std::hex << insn << std::endl;
+            unimplemented("unknown during translation", addr);
+        }
         addr += 4;
     }
 

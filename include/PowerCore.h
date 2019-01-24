@@ -64,7 +64,8 @@ private:
 
     bool conditional(uint32_t BO, uint32_t BI);
 
-    void unimplemented(const char* name);
+    void unimplemented(const char* name, uint32_t addr);
+    void unimplemented(const char* name) { unimplemented(name, CIA); }
 
     void interpret1();
     void interpret2(void ***opcodeRet);
