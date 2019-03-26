@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
     
     for(auto freq : freqlist)
     {
-        std::cout << std::setw(30) << std::left << freq.second;
+        std::cout << std::setw(30) << std::left << freq.second.c_str();
         std::cout << std::right << std::setw(10) << freq.first << std::endl;
     }
     std::cout << std::endl;
