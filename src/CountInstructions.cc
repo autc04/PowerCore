@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 #include <algorithm>
+#include <string>
 
 const char *insnName(uint32_t insn)
 {
