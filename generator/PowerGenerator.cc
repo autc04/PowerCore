@@ -521,7 +521,6 @@ void InstructionInfo::expand(std::vector<InstructionInfo>& out)
         for(Field *f : expandedFields)
             nstr << "_" << f->value;
         name = nstr.str();
-        std::cout << name << std::endl;
         out.push_back(*this);
     } while(!carry);
     
