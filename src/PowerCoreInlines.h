@@ -41,7 +41,10 @@ inline int64_t swap(int64_t v) { return swap64(v); }
 
 inline void *PowerCore::translateAddress(uint32_t addr) const
 {
-    return ((char*)memoryBases[addr >> 30]) + addr;
+    if constexpr(sizeof(void*) == 4)
+        return (char*)memoryBases[0] + addr;
+    else
+        return ((char*)memoryBases[addr >> 30]) + addr;
 }
 
 inline void PowerCore::setcr(int field, uint32_t x)
