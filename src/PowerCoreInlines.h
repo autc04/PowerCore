@@ -8,7 +8,8 @@
 #define BIGENDIAN
 #elif defined(i386) \
      || defined(__x86_64) || defined(__x86_64__) \
-     || defined (_M_X64) || defined(_M_IX86)
+     || defined (_M_X64) || defined(_M_IX86) \
+     || defined(__arm__)
 #define LITTLEENDIAN
 #else
 #error "Unknown CPU type"
