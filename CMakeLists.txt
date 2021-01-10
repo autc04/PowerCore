@@ -35,6 +35,7 @@ add_executable(CountInstructions
     )
 target_include_directories(CountInstructions PUBLIC include)
 target_include_directories(CountInstructions PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(CountInstructions PowerCore)
 
 add_executable(testbed test/main.cc)
 target_link_libraries(testbed PowerCore)
