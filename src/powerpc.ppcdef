@@ -1926,10 +1926,14 @@ tw
 011111 TO RA RB 0000000100 0
 0      6  11 17 21         31
 
+    /* Hack: just ignore 'trap word' for now */;
+
 ===
 twi
 000011 TO RA SI
 0      6  11 16
+
+    /* Hack: just ignore 'trap word immediate' for now */;
 
 ===
 wrtee
