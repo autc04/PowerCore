@@ -9,6 +9,7 @@
 #include <set>
 #include <cassert>
 #include <iterator>
+#include <stdint.h>
 
 std::string definitionFile;
 
